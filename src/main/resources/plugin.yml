@@ -1,0 +1,6 @@
+name: AmaroSurvivalBougaiPlugin
+version: '${version}'
+main: jp.amaro.survival.AmaroSurvivalBougaiPlugin
+api-version: '26.2'
+description: YouTube Live Chat driven interference for Amaro Survival
+authors: [ryanjei]

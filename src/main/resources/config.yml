@@ -1,0 +1,16 @@
+youtube:
+  enabled: false
+
+interference:
+  enabled: true
+  required-comments: 10
+  category-weights:
+    small: 55
+    medium: 35
+    large: 10
+
+base-raid:
+  duration-seconds: 180
+  radius: 40
+  wave-interval-seconds: 30
+  mobs-per-wave: 8
