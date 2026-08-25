@@ -30,7 +30,7 @@ youtube.live-chat-id=YOUR_LIVE_CHAT_ID
 
 `secrets.properties` はGit管理対象外です。環境変数 `AMARO_YOUTUBE_API_KEY` と `AMARO_YOUTUBE_LIVE_CHAT_ID` でも設定できます。認証情報がない、またはAPI接続に失敗した場合はYouTube連携だけが停止し、Minecraftサーバーとプラグイン本体は稼働を続けます。
 
-コメントは `[YT] username: コメント本文` としてゲーム内に表示されます。YouTubeの推奨ポーリング間隔に従い、同じコメントIDはプロセス内で一度だけ処理します。
+コメントは `[YT] username: コメント本文` としてゲーム内に表示されます。YouTubeの推奨ポーリング間隔に従い、接続時の既存履歴はゲージへ加算せず、接続後の同じコメントIDはプロセス内で一度だけ処理します。
 
 ## 妨害ゲージと抽選
 
