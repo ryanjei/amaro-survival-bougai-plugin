@@ -65,15 +65,20 @@ public final class InterferenceRuntime {
     }
 
     private void swarm(Collection<? extends Player> players, List<EntityType> types, int count, boolean enhanced) {
+        int remaining = ownership.allowedSpawnCount(players.size() * count);
+        outer:
         for (Player player : players) for (int i = 0; i < count; i++) {
-            SpawnLocations.around(player.getLocation(), 4, 9, random).ifPresent(location -> {
-                Entity entity = player.getWorld().spawnEntity(location, types.get(random.nextInt(types.size())));
+            if (remaining == 0) break outer;
+            Optional<org.bukkit.Location> location = SpawnLocations.around(player.getLocation(), 4, 9, random);
+            if (location.isPresent()) {
+                Entity entity = player.getWorld().spawnEntity(location.get(), types.get(random.nextInt(types.size())));
                 ownership.mark(entity, "interference");
                 if (enhanced && entity instanceof LivingEntity living) {
                     living.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 90 * 20, 0));
                     living.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 90 * 20, 0));
                 }
-            });
+                remaining--;
+            }
         }
     }
 }

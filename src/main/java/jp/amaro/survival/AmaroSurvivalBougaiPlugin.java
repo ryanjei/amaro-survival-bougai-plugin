@@ -52,7 +52,14 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin {
         Bukkit.broadcast(Component.text("[YT] " + comment.author() + ": " + comment.message()));
         if (!settings.interferenceEnabled()) return;
         boolean triggered = gauge.addComment(); updateGauge();
-        if (triggered) interference.apply(selector.select());
+        if (triggered) {
+            InterferenceType selected = selector.select();
+            if (selected == InterferenceType.BASE_RAID && raid.active()) {
+                selected = selector.select(InterferenceCategory.MEDIUM);
+                getLogger().info("拠点襲撃進行中のためMEDIUM妨害へ切り替えました: " + selected.name());
+            }
+            interference.apply(selected);
+        }
     }
 
     private void updateGauge() {

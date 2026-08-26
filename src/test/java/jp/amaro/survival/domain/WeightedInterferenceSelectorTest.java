@@ -14,6 +14,10 @@ class WeightedInterferenceSelectorTest {
             assertEquals(category, selector.selectCategory());
         }
     }
+    @Test void canSelectMediumDirectlyForAnActiveRaidFallback() {
+        WeightedInterferenceSelector selector = new WeightedInterferenceSelector(Map.of(InterferenceCategory.LARGE, 1), new Random(3));
+        for (int i = 0; i < 20; i++) assertEquals(InterferenceCategory.MEDIUM, selector.select(InterferenceCategory.MEDIUM).category());
+    }
     @Test void rejectsInvalidWeights() {
         assertThrows(IllegalArgumentException.class, () -> new WeightedInterferenceSelector(Map.of(), new Random()));
         assertThrows(IllegalArgumentException.class, () -> new WeightedInterferenceSelector(Map.of(InterferenceCategory.SMALL, -1), new Random()));

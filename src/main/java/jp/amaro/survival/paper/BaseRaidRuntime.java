@@ -48,7 +48,7 @@ public final class BaseRaidRuntime {
 
     private void spawnWave(World world) {
         Location center = world.getSpawnLocation(); int spawned = 0;
-        int allowed = Math.min(settings.mobsPerWave(), Math.max(0, 80 - ownership.countOwned()));
+        int allowed = ownership.allowedSpawnCount(settings.mobsPerWave());
         for (int i = 0; i < allowed; i++) {
             Optional<Location> location = SpawnLocations.around(center, Math.max(8, settings.raidRadius() / 2), settings.raidRadius(), random);
             if (location.isEmpty()) continue;

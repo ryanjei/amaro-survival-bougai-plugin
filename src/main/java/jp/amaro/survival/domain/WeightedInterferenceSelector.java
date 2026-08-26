@@ -32,7 +32,10 @@ public final class WeightedInterferenceSelector {
     }
 
     public InterferenceType select() {
-        InterferenceCategory category = selectCategory();
+        return select(selectCategory());
+    }
+
+    public InterferenceType select(InterferenceCategory category) {
         List<InterferenceType> candidates = Arrays.stream(InterferenceType.values())
                 .filter(type -> type.category() == category).toList();
         return candidates.get(random.nextInt(candidates.size()));
