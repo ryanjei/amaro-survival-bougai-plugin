@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.random.RandomGenerator;
 
 public final class BaseRaidRuntime {
+    public record Status(boolean active, long remainingSeconds, long currentWave) {}
     private static final List<EntityType> MOB_TYPES = List.of(EntityType.ZOMBIE, EntityType.HUSK, EntityType.DROWNED,
             EntityType.SKELETON, EntityType.STRAY, EntityType.SPIDER, EntityType.CAVE_SPIDER,
             EntityType.CREEPER, EntityType.PILLAGER, EntityType.VINDICATOR, EntityType.WITCH);
@@ -61,9 +62,13 @@ public final class BaseRaidRuntime {
     public void addViewer(Player player) { if (bar != null) player.showBossBar(bar); }
     public void removeViewer(Player player) { if (bar != null) player.hideBossBar(bar); }
     public boolean active() { return task != null; }
+    public Status status() {
+        if (task == null || timeline == null) return new Status(false, 0, 0);
+        return new Status(true, timeline.remainingSeconds(Instant.now()), Math.max(0, lastWave));
+    }
     public void stop(boolean announce) {
         if (task == null) return;
-        task.cancel(); task = null;
+        task.cancel(); task = null; timeline = null; lastWave = -1;
         BossBar oldBar = bar; bar = null;
         Bukkit.getOnlinePlayers().forEach(player -> { player.hideBossBar(oldBar); if (announce) player.sendMessage(Component.text("[妨害] 拠点襲撃が終了しました。")); });
         plugin.getLogger().info("大規模襲撃を終了しました。");

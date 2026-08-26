@@ -4,3 +4,12 @@ main: jp.amaro.survival.AmaroSurvivalBougaiPlugin
 api-version: '26.2'
 description: YouTube Live Chat driven interference for Amaro Survival
 authors: [ryanjei]
+commands:
+  asbp:
+    description: Amaro Survival Bougai Plugin administrator test command
+    usage: /asbp test <operation>
+    permission: amaro.survival.admin
+permissions:
+  amaro.survival.admin:
+    description: Allows ASBP test operations
+    default: op

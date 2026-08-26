@@ -1,6 +1,7 @@
 package jp.amaro.survival;
 
 import jp.amaro.survival.config.PluginSettings;
+import jp.amaro.survival.command.*;
 import jp.amaro.survival.domain.*;
 import jp.amaro.survival.paper.*;
 import jp.amaro.survival.youtube.*;
@@ -13,13 +14,13 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
-public final class AmaroSurvivalBougaiPlugin extends JavaPlugin {
+public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements AdminOperations {
     private BossBar gaugeBar; private BaseRaidRuntime raid; private OwnedMobService ownership; private YouTubePoller poller;
     private CommentGauge gauge; private WeightedInterferenceSelector selector; private InterferenceRuntime interference;
+    private PluginSettings settings;
 
     @Override public void onEnable() {
         saveDefaultConfig();
-        final PluginSettings settings;
         try { settings = PluginSettings.from(getConfig()); }
         catch (IllegalArgumentException exception) { getLogger().severe("config.ymlが不正です: " + exception.getMessage()); getServer().getPluginManager().disablePlugin(this); return; }
         gauge = new CommentGauge(settings.requiredComments());
@@ -30,6 +31,10 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin {
         interference = new InterferenceRuntime(ownership, raid, ThreadLocalRandom.current(), getLogger());
         Bukkit.getOnlinePlayers().forEach(player -> player.showBossBar(gaugeBar));
         getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(gaugeBar, raid), this);
+        AdminTestCommand adminCommand = new AdminTestCommand(this);
+        if (getCommand("asbp") == null) throw new IllegalStateException("plugin.ymlにasbp Commandがありません。");
+        getCommand("asbp").setExecutor(adminCommand);
+        getCommand("asbp").setTabCompleter(adminCommand);
         if (settings.youtubeEnabled()) startYouTube(settings);
         else getLogger().info("YouTube連携はconfigで停止しています。Minecraftプラグインは通常稼働します。");
         getLogger().info("Amaro Survival Bougai Plugin v0.1 を有効化しました。");
@@ -42,15 +47,19 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin {
             if (secrets.isEmpty()) { getLogger().warning("YouTube連携を開始できません。secrets.propertiesにAPI KeyとLive Chat IDを設定してください。"); return; }
             poller = new YouTubePoller(new YouTubeLiveChatClient(secrets.get()), comment -> {
                 if (!isEnabled()) return;
-                Bukkit.getScheduler().runTask(this, () -> processComment(comment, settings));
+                Bukkit.getScheduler().runTask(this, () -> processComment(comment));
             }, getLogger());
             poller.start(); getLogger().info("YouTube Live Chat連携を開始しました。");
         } catch (Exception exception) { getLogger().warning("YouTube連携の初期化に失敗しました。Minecraftプラグインは継続します: " + exception.getMessage()); }
     }
 
-    private void processComment(YouTubeComment comment, PluginSettings settings) {
+    private void processComment(YouTubeComment comment) {
         Bukkit.broadcast(Component.text("[YT] " + comment.author() + ": " + comment.message()));
         if (!settings.interferenceEnabled()) return;
+        advanceGauge();
+    }
+
+    private void advanceGauge() {
         boolean triggered = gauge.addComment(); updateGauge();
         if (triggered) {
             InterferenceType selected = selector.select();
@@ -67,6 +76,21 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin {
         gaugeBar.name(Component.text("視聴者妨害 " + percent + "%"));
         gaugeBar.progress((float) gauge.progress());
     }
+
+    @Override public StatusSnapshot status() {
+        int owned = ownership.countOwned();
+        return new StatusSnapshot(isEnabled(), settings.youtubeEnabled(), settings.interferenceEnabled(),
+                gauge.comments(), gauge.requiredComments(), (int) Math.floor(gauge.progress() * 100), raid.active(),
+                owned, Math.max(0, OwnedMobService.MAX_OWNED_MOBS - owned), Bukkit.getOnlinePlayers().size());
+    }
+
+    @Override public void addGauge(int count) { for (int i = 0; i < count; i++) advanceGauge(); }
+    @Override public void applyInterference(InterferenceType type) { interference.apply(type); }
+    @Override public void startRaid() { interference.apply(InterferenceType.BASE_RAID); }
+    @Override public void stopRaid() { raid.stop(true); }
+    @Override public RaidSnapshot raidStatus() { BaseRaidRuntime.Status s = raid.status(); return new RaidSnapshot(s.active(), s.remainingSeconds(), s.currentWave()); }
+    @Override public int cleanupOwnedMobs() { int before = ownership.countOwned(); ownership.cleanupAll(); return before; }
+    @Override public void fakeYouTubeComment(String author, String message) { processComment(new YouTubeComment("admin-fake", author, message)); }
 
     @Override public void onDisable() {
         if (poller != null) poller.close();

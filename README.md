@@ -71,6 +71,24 @@ gradlew.bat clean build
 
 生成Jarは `build/libs/` にあります。GsonはJarへ同梱されます。
 
+## 実機テスト用Admin Command
+
+通常運用では使用不要です。`/asbp`以下はOPまたは`amaro.survival.admin`権限を持つ管理者だけが実行できます。Consoleからも実行できます。認証情報は表示しません。
+
+| Command | 用途 | 期待結果 |
+| --- | --- | --- |
+| `/asbp test status` | Plugin、YouTube、妨害、Gauge、Raid、所有Mob、Player状態確認 | 現在値をChatへ表示 |
+| `/asbp test gauge add [count]` | 実コメントと同じGauge処理を1～100件進める | 閾値到達時は本番抽選・妨害を発動 |
+| `/asbp test interference <type>` | 指定妨害を直接確認 | 本番`InterferenceRuntime`から1回発動 |
+| `/asbp test raid start` | BASE_RAID開始 | 本番Raid Runtimeと通知を開始 |
+| `/asbp test raid stop` | 実行中Raid停止 | Task、BossBar、Raid状態を安全に終了 |
+| `/asbp test raid status` | Raid状態確認 | active、残り秒、現在Waveを表示 |
+| `/asbp test mobs count` | 所有Mob容量確認 | 現在数、上限80、残Capacityを表示 |
+| `/asbp test mobs cleanup` | テストMob回収 | PDC所有marker付きMobだけ削除 |
+| `/asbp test youtube fake <author> <message...>` | YouTube Adapter以降を再現 | Chat転送、Gauge加算、抽選、妨害まで本番処理を共有 |
+
+`interference`のtypeにはREADME記載のSMALL/MEDIUM/LARGE各妨害名を指定します。不正なtypeの場合は候補一覧を表示します。Fake CommentはGoogle API通信、API quota、実Comment IDの確認には使用できません。
+
 ## v0.1の制限
 
 管理画面、Web UI、土地・建築保護、ロールバック、クールダウン、個人ターゲット、投票、ランキング、Discord連携、天候・時刻変更、TNT大量生成、高度な難易度調整、OPBP連携は実装していません。実YouTube配信、Paper/Purpur、Geyser/Floodgateでの最終動作確認は実機環境で行ってください。
