@@ -8,7 +8,6 @@ commands:
   asbp:
     description: Amaro Survival Bougai Plugin administrator test command
     usage: /asbp test <operation>
-    permission: amaro.survival.admin
 permissions:
   amaro.survival.admin:
     description: Allows ASBP test operations

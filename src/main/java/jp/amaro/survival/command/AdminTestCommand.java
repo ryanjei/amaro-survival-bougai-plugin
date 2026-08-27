@@ -12,11 +12,13 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     public static final String PERMISSION = "amaro.survival.admin";
     private static final int MAX_GAUGE_ADD = 100;
     private final AdminOperations operations;
+    private final java.util.function.Predicate<CommandSender> administrator;
 
-    public AdminTestCommand(AdminOperations operations) { this.operations = operations; }
+    public AdminTestCommand(AdminOperations operations) { this(operations, sender -> sender.hasPermission(PERMISSION)); }
+    public AdminTestCommand(AdminOperations operations, java.util.function.Predicate<CommandSender> administrator) { this.operations = operations; this.administrator = administrator; }
 
     @Override public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        if (!sender.hasPermission(PERMISSION)) { reply(sender, "このCommandを実行する権限がありません。"); return true; }
+        if (!administrator.test(sender)) { reply(sender, "このCommandを実行する権限がありません。"); return true; }
         if (args.length < 2 || !args[0].equalsIgnoreCase("test")) { usage(sender); return true; }
         try {
             return switch (args[1].toLowerCase(Locale.ROOT)) {
@@ -99,7 +101,7 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     private static void reply(CommandSender sender, String message) { sender.sendMessage(Component.text("[ASBP] " + message)); }
 
     @Override public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
-        if (!sender.hasPermission(PERMISSION)) return List.of();
+        if (!administrator.test(sender)) return List.of();
         if (args.length == 1) return matches(args[0], List.of("test"));
         if (args.length == 2) return matches(args[1], List.of("status", "gauge", "interference", "raid", "mobs", "youtube"));
         if (args.length == 3 && args[1].equalsIgnoreCase("interference")) return matches(args[2], Arrays.stream(InterferenceType.values()).map(Enum::name).toList());

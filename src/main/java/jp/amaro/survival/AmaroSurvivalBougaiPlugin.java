@@ -31,7 +31,8 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
         interference = new InterferenceRuntime(ownership, raid, ThreadLocalRandom.current(), getLogger());
         Bukkit.getOnlinePlayers().forEach(player -> player.showBossBar(gaugeBar));
         getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(gaugeBar, raid), this);
-        AdminTestCommand adminCommand = new AdminTestCommand(this);
+        TestAdminAuthorizer authorizer = new TestAdminAuthorizer(getDataFolder().toPath().resolve("test-admin.properties"));
+        AdminTestCommand adminCommand = new AdminTestCommand(this, authorizer::isAuthorized);
         if (getCommand("asbp") == null) throw new IllegalStateException("plugin.ymlにasbp Commandがありません。");
         getCommand("asbp").setExecutor(adminCommand);
         getCommand("asbp").setTabCompleter(adminCommand);

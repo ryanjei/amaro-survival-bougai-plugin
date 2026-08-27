@@ -9,7 +9,7 @@ $parseErrors = $null
 if ($parseErrors.Count -ne 0) { throw "Launcher構文検査失敗: $($parseErrors[0].Message)" }
 
 $plugins = @(
-    @{ Name = 'Geyser'; Url = 'https://download.geysermc.org/v2/projects/geyser/versions/2.10.1/builds/1177/downloads/spigot'; Sha256 = '52a04e22c4876a357b57a90588c5e5e2996b7d67c5d919fac9091a092352abc2' },
+    @{ Name = 'Geyser'; Url = 'https://download.geysermc.org/v2/projects/geyser/versions/2.11.2/builds/1233/downloads/spigot'; Sha256 = 'a851adeb232e45644526ce16263e819ceb427a98f3919e5a97e6334b165c2f83' },
     @{ Name = 'Floodgate'; Url = 'https://download.geysermc.org/v2/projects/floodgate/versions/2.2.5/builds/138/downloads/spigot'; Sha256 = '44bdb908e2fb4ff1b974d5313d048a625a21555a9844cfb86256a98e8e1c6bd1' },
     @{ Name = 'ViaVersion'; Url = 'https://github.com/ViaVersion/ViaVersion/releases/download/5.10.0/ViaVersion-5.10.0.jar'; Sha256 = 'ab137b62829721c8ced3c554ede904a6c02f6d1963c33b32d7d432bb25607b60' },
     @{ Name = 'ViaBackwards'; Url = 'https://github.com/ViaVersion/ViaBackwards/releases/download/5.10.0/ViaBackwards-5.10.0.jar'; Sha256 = '107a6bce08b1661382b8590df7c0ab714bc5967a93c1bba2d71531448689ce82' }

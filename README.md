@@ -26,12 +26,12 @@ WindowsではRepository rootの`START_SERVER.bat`をダブルクリックする�
 1. `START_SERVER.bat`をダブルクリックします。
 2. 初回だけ表示されたMinecraft EULAを確認し、同意する場合は`Y`を入力します。Launcherが勝手に同意することはありません。
 3. Minecraft Java Editionは`localhost:25565`、Bedrock Editionは同じPCまたはLAN内のServer addressとUDP port `19132`へ接続します。
-4. OP権限で`/asbp test status`を実行します。
+4. 初回Launcherで指定したMinecraft Java Player名で接続し、Paper ConsoleでOPを付与せず`/asbp test status`を実行します。初回認可時にUUIDが保存され、以後はUUIDで本人確認します。
 5. 終了時はLauncher Windowで`Y`を押します。Paperへ正式な`stop`を送り、World保存を待って終了します。
 
 開発Server、World、logは`.runtime/paper/`、Launcher logは`.runtime/logs/launcher-latest.log`へ保存され、Gitには含まれません。Paper 26.2 build 112と次のRuntime Pluginは公式配布元から固定版を取得し、SHA-256検証後に使用します。
 
-- Geyser-Spigot 2.10.1 build 1177（GeyserMC公式Download API）
+- Geyser-Spigot 2.11.2 build 1233（GeyserMC公式Download API、Bedrock 26.40対応）
 - Floodgate-Spigot 2.2.5 build 138（GeyserMC公式Download API）
 - ViaVersion 5.10.0（公式GitHub Release）
 - ViaBackwards 5.10.0（公式GitHub Release）

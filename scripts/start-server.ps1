@@ -16,7 +16,7 @@ $paperBuild = '112'
 $paperApi = "https://fill.papermc.io/v3/projects/paper/versions/$paperVersion/builds"
 $userAgent = 'amaro-survival-bougai-launcher/0.1 (https://github.com/ryanjei/amaro-survival-bougai-plugin)'
 $runtimePluginDefinitions = @(
-    @{ DisplayName = 'Geyser'; FileName = 'Geyser-Spigot.jar'; Version = '2.10.1 build 1177'; Url = 'https://download.geysermc.org/v2/projects/geyser/versions/2.10.1/builds/1177/downloads/spigot'; Sha256 = '52a04e22c4876a357b57a90588c5e5e2996b7d67c5d919fac9091a092352abc2' },
+    @{ DisplayName = 'Geyser'; FileName = 'Geyser-Spigot.jar'; Version = '2.11.2 build 1233'; Url = 'https://download.geysermc.org/v2/projects/geyser/versions/2.11.2/builds/1233/downloads/spigot'; Sha256 = 'a851adeb232e45644526ce16263e819ceb427a98f3919e5a97e6334b165c2f83' },
     @{ DisplayName = 'Floodgate'; FileName = 'floodgate-spigot.jar'; Version = '2.2.5 build 138'; Url = 'https://download.geysermc.org/v2/projects/floodgate/versions/2.2.5/builds/138/downloads/spigot'; Sha256 = '44bdb908e2fb4ff1b974d5313d048a625a21555a9844cfb86256a98e8e1c6bd1' },
     @{ DisplayName = 'ViaVersion'; FileName = 'ViaVersion.jar'; Version = '5.10.0'; Url = 'https://github.com/ViaVersion/ViaVersion/releases/download/5.10.0/ViaVersion-5.10.0.jar'; Sha256 = 'ab137b62829721c8ced3c554ede904a6c02f6d1963c33b32d7d432bb25607b60' },
     @{ DisplayName = 'ViaBackwards'; FileName = 'ViaBackwards.jar'; Version = '5.10.0'; Url = 'https://github.com/ViaVersion/ViaBackwards/releases/download/5.10.0/ViaBackwards-5.10.0.jar'; Sha256 = '107a6bce08b1661382b8590df7c0ab714bc5967a93c1bba2d71531448689ce82' }
@@ -241,6 +241,16 @@ try {
 
     Show-Step 'Runtime Pluginを固定版・SHA-256検証付きで確認しています。'
     foreach ($definition in $runtimePluginDefinitions) { Install-RuntimePlugin $definition }
+    $adminFile = Join-Path $plugins 'AmaroSurvivalBougaiPlugin\test-admin.properties'
+    if (-not (Test-Path -LiteralPath $adminFile)) {
+        Show-Step '実機テスト管理者を設定します。未設定のまま続行する場合は空Enterです。'
+        $adminName = (Read-Host 'Minecraft Java Player名').Trim()
+        if (-not [string]::IsNullOrWhiteSpace($adminName)) {
+            if ($adminName -notmatch '^[A-Za-z0-9_]{3,16}$') { Stop-WithMessage 'Player名は英数字と_の3～16文字で指定してください。' }
+            New-Item -ItemType Directory -Path (Split-Path $adminFile -Parent) -Force | Out-Null
+            @("player-name=$adminName", 'player-uuid=') | Set-Content -LiteralPath $adminFile -Encoding ascii
+        }
+    }
     $geyserConfigWasAbsent = -not (Test-Path -LiteralPath (Join-Path $plugins 'Geyser-Spigot\config.yml'))
 
     Confirm-Eula

@@ -6,7 +6,7 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 
 1. Repository rootの`START_SERVER.bat`をダブルクリックする。
 2. Java 25確認、clean build、Unit Test、Paper 26.2 build 112確認、ASBP JAR配置が成功することを確認する。
-3. Geyser 2.10.1 build 1177、Floodgate 2.2.5 build 138、ViaVersion 5.10.0、ViaBackwards 5.10.0が固定版・SHA-256検証付きで配置されることを確認する。
+3. Geyser 2.11.2 build 1233、Floodgate 2.2.5 build 138、ViaVersion 5.10.0、ViaBackwards 5.10.0が固定版・SHA-256検証付きで配置されることを確認する。
 4. 初回だけMinecraft EULAのリンクを確認し、同意する場合のみ`Y`を入力する。`N`ではPaperが起動しないことを確認する。
 5. Minecraft Java Editionから`localhost`へ接続する。
 6. Consoleまたは`latest.log`でAmaroSurvivalBougaiPlugin、Geyser、Floodgate、ViaVersion、ViaBackwardsがすべて正常enableされ、Plugin load errorがないことを確認する。
@@ -21,7 +21,7 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 
 ## Gate 2: Admin Test Command
 
-OPまたは`amaro.survival.admin`権限で次を確認する。一般Playerでは拒否され、ConsoleでもPlayerを必要としない操作が実行できることを確認する。
+初回Launcherで明示指定したPlayer、OP、`amaro.survival.admin`権限、Consoleで次を確認する。指定されていない一般Playerは拒否されることを確認する。指定PlayerはPaper ConsoleでOPを付与せず実行でき、初回成功後は保存UUIDで認可されることを確認する。
 
 1. `/asbp test status`
 2. Plugin enabled、YouTube/妨害設定、Gauge、Raid、ASBP所有Mob、残Capacity、Online Player数が正しいことを確認する。
@@ -88,7 +88,7 @@ Gate 1～4合格後に実施する。
 4. Plugin接続前の既存コメント履歴がGaugeへ加算されないことを確認する。
 5. API停止・無効認証時にYouTube連携だけが停止し、PaperとASBPの他機能が継続することを確認する。
 6. Java Edition 26.2からTCP `25565`へ接続できることを確認する。
-7. 現在Geyser 2.10.1 build 1177が正式対応するBedrock EditionからUDP `19132`へ接続できることを確認する。
+7. Geyser 2.11.2 build 1233が対応するBedrock 26.40からUDP `19132`へ接続でき、更新不足警告が出ないことを確認する。
 8. Java Edition Accountを持たないBedrock AccountがFloodgate経由で参加できることを確認する。
 9. Bedrock Playerが`/asbp test status`のOnline Player数へ含まれ、SMALL妨害、MEDIUM妨害のPlayer周辺生成、Title、BossBarの対象になることを確認する。
 10. BASE_RAID中もBedrock Playerが通常Playerとして行動でき、切断・再接続でASBP errorが発生しないことを確認する。

@@ -17,6 +17,12 @@ class AdminTestCommandTest {
         assertEquals(0, operations.gaugeAdded); assertFalse(messages.isEmpty());
     }
 
+    @Test void configuredAdministratorCanUseCommandWithoutBukkitPermission() {
+        FakeOperations operations = new FakeOperations(); CommandSender sender = sender(false, new ArrayList<>());
+        new AdminTestCommand(operations, candidate -> candidate == sender).onCommand(sender, command(), "asbp", new String[]{"test", "gauge", "add", "1"});
+        assertEquals(1, operations.gaugeAdded);
+    }
+
     @Test void resolvesInterferenceTypeAndUsesProductionOperation() {
         FakeOperations operations = new FakeOperations();
         new AdminTestCommand(operations).onCommand(sender(true, new ArrayList<>()), command(), "asbp", new String[]{"test", "interference", "darkness"});
