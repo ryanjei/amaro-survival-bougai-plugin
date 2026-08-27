@@ -1,0 +1,56 @@
+name: AI Review Context (Dry Run)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: Base commit SHA (defaults to origin/main)
+        required: false
+      head_sha:
+        description: Head commit SHA (defaults to HEAD)
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ai-review-context-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout review head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test context builder
+        run: python3 -m unittest scripts/ai-review/test_build_review_context.py
+
+      - name: Build and discard sanitized review context
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+        run: |
+          BASE_SHA="${PR_BASE_SHA:-origin/main}"
+          HEAD_SHA="${PR_HEAD_SHA:-HEAD}"
+          OUTPUT="${RUNNER_TEMP}/ai-review-context.md"
+          python3 scripts/ai-review/build_review_context.py \
+            --base "$BASE_SHA" --head "$HEAD_SHA" --output "$OUTPUT"
+          BYTE_COUNT=$(wc -c < "$OUTPUT")
+          rm -f "$OUTPUT"
+          {
+            echo '## AI Review Context: DRY RUN'
+            echo ''
+            echo "- Head SHA: \`$HEAD_SHA\`"
+            echo "- Sanitized context size: $BYTE_COUNT bytes"
+            echo '- Context本文は保存・公開せず、生成確認後に削除しました。'
+            echo '- AI API、Repository Secret、PR書込み、自動mergeは使用していません。'
+          } >> "$GITHUB_STEP_SUMMARY"

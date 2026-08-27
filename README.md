@@ -1,5 +1,7 @@
 # Amaro Survival Bougai Plugin
 
+開発時のGitHub自動AIレビュー候補、無課金Dry Run、安全要件は[AI Review設計](docs/AI_REVIEW.md)を参照してください。AI Reviewは人間によるMinecraft実機受入やmerge判断を代替しません。
+
 24時間稼働するMinecraft生活サーバーで、YouTube Live Chatのコメントをゲーム内へ届け、コメントの蓄積によってランダムな「妨害」を発生させるPaperプラグインです。OPBPとは独立したプロジェクトです。
 
 ## 対応環境
