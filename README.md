@@ -8,7 +8,7 @@
 - Paper 26.2（Purpur等のPaper互換サーバーも想定）
 - Java 25
 - 約10人までの生活サーバーを初期想定
-- Geyser + Floodgate環境を想定。Bedrock参加者も通常のオンラインプレイヤーとして扱います。本プラグインはBedrockプロトコルを実装しません。
+- Geyser + Floodgate環境を標準構成として想定。Bedrock参加者も通常のオンラインプレイヤーとして扱います。本プラグインはBedrockプロトコルを実装しません。
 
 ## 導入
 
@@ -18,6 +18,31 @@
 4. `config.yml` の `youtube.enabled` を `true` にしてサーバーを再起動します。
 
 日常運用ではサーバーの通常の起動・停止だけで動作し、PowerShellやCLI操作は不要です。
+
+## ローカル実機テスト
+
+WindowsではRepository rootの`START_SERVER.bat`をダブルクリックするだけで、現在checkout中のsourceをclean buildし、検証済みPaperと最新ASBP JARでローカルサーバーを起動できます。
+
+1. `START_SERVER.bat`をダブルクリックします。
+2. 初回だけ表示されたMinecraft EULAを確認し、同意する場合は`Y`を入力します。Launcherが勝手に同意することはありません。
+3. Minecraft Java Editionは`localhost:25565`、Bedrock Editionは同じPCまたはLAN内のServer addressとUDP port `19132`へ接続します。
+4. 初回Launcherで指定したMinecraft Java Player名で接続します。初回接続時にUUIDを保存し、Paper APIでそのPlayerだけをOPへ昇格するため、Consoleで`op`を入力せず`/asbp test status`や`/gamemode`を利用できます。
+5. 終了時はLauncher Windowで`Y`を押します。Launcherがlocalhost限定・一回限りtokenでASBPの停止専用受付へ要求し、PluginがPaper正式APIからWorld保存を伴う終了を開始します。
+
+開発Server、World、logは`.runtime/paper/`、Launcher logは`.runtime/logs/launcher-latest.log`へ保存され、Gitには含まれません。Paper 26.2 build 112と次のRuntime Pluginは公式配布元から固定版を取得し、SHA-256検証後に使用します。
+
+- Geyser-Spigot 2.11.2 build 1233（GeyserMC公式Download API、Bedrock 26.40対応）
+- Floodgate-Spigot 2.2.5 build 138（GeyserMC公式Download API）
+- ViaVersion 5.11.0（公式GitHub Release、SHA-256固定）
+- ViaBackwards 5.11.0（公式GitHub Release、SHA-256固定）
+
+Build失敗時はPaperを起動せず、過去のASBP JARへフォールバックしません。Launcherが管理するのはASBPと上記4 JARの固定ファイル名だけで、ユーザーが追加した他Plugin JARや既存設定Directoryは削除・上書きしません。ViaVersion系APIやGeyser/Floodgate APIへのASBP本体依存は追加していません。
+
+Geyserの初回起動ではUDP `19132`を使用し、同じPaper Serverへ接続します。Floodgateが同時に読み込まれるため初回RuntimeもFloodgate認証が選択され、初回停止後に生成済み`plugins/Geyser-Spigot/config.yml`の`bedrock.address`、`bedrock.port`、`java.auth-type`だけを現行schemaに従って確定します。既存configがある場合や2回目以降はLauncherが上書きしません。Floodgateが生成する`key.pem`等は`.runtime`内だけに保持され、GitやLauncher logへ出力されません。
+
+安全停止要求に失敗した場合、LauncherはPaperを強制終了せず、「Paper Serverはまだ動作しています」と明示して監視を続けます。stdinへの`stop`入力や任意Command APIは使用しません。
+
+実機確認の全手順は[docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)を参照してください。
 
 ## YouTube Live Chat設定
 
@@ -30,7 +55,7 @@ youtube.live-chat-id=YOUR_LIVE_CHAT_ID
 
 `secrets.properties` はGit管理対象外です。環境変数 `AMARO_YOUTUBE_API_KEY` と `AMARO_YOUTUBE_LIVE_CHAT_ID` でも設定できます。認証情報がない、またはAPI接続に失敗した場合はYouTube連携だけが停止し、Minecraftサーバーとプラグイン本体は稼働を続けます。
 
-コメントは `[YT] username: コメント本文` としてゲーム内に表示されます。YouTubeの推奨ポーリング間隔に従い、接続時の既存履歴はゲージへ加算せず、接続後の同じコメントIDはプロセス内で一度だけ処理します。
+コメントは赤い`[YouTube]` Prefix、白い投稿者名、読みやすい本文色でゲーム内に表示されます。Fake Commentと実YouTubeは同じFormatterを通ります。Consoleにはplain textの`[YT] username: コメント本文`を記録します。YouTubeの推奨ポーリング間隔に従い、接続時の既存履歴はゲージへ加算せず、接続後の同じコメントIDはプロセス内で一度だけ処理します。
 
 ## 妨害ゲージと抽選
 
@@ -44,7 +69,7 @@ youtube.live-chat-id=YOUR_LIVE_CHAT_ID
 
 ## 拠点襲撃
 
-BASE_RAIDは最初に見つかった通常ワールドの初期スポーン地点を中心に、時間制限付きの混成Mobウェーブを生成します。Zombie、Husk、Drowned、Skeleton、Stray、Spider、Cave Spider、Creeper、Pillager、Vindicator、Witchを使用します。残り時間は専用BossBarで表示します。
+BASE_RAIDは最初に見つかった通常ワールドのワールドスポーン地点を開始時に中心として固定し、時間制限付きの混成Mobウェーブを生成します。対象ワールドのスポーン半径は0となり、同ワールドで死亡したプレイヤーもワールドスポーンへ復帰します。NetherやEndの設定は変更しません。Zombie、Husk、Drowned、Skeleton、Stray、Spider、Cave Spider、Creeper、Pillager、Vindicator、Witchを使用します。各Waveは実際に生成できたMob内訳をTitleとSubtitleで通知し、残り時間は専用BossBarで表示します。Wave間も初期設定では8秒ごとに2体のAmbient Mobを同じ範囲へ生成します。
 
 時間切れで新規ウェーブとBossBarを停止します。既存の自然Mobを一括削除しません。プラグインが生成したMobには所有タグを付け、Plugin disable時のみ所有Mobを安全に回収します。
 
@@ -58,6 +83,8 @@ BASE_RAIDは最初に見つかった通常ワールドの初期スポーン地�
 - `base-raid.radius`: 初期スポーンからの襲撃半径（8以上）
 - `base-raid.wave-interval-seconds`: ウェーブ間隔
 - `base-raid.mobs-per-wave`: 1ウェーブ基本Mob数（1～40）
+- `base-raid.ambient-spawn-interval-seconds`: Wave間の継続Spawn間隔（初期値8秒）
+- `base-raid.ambient-mobs-per-spawn`: Ambient Spawn 1回あたりのMob数（初期値2、1～20）
 
 不正な安全関連値ではプラグインを有効化せず、理由をコンソールへ表示します。
 
@@ -73,7 +100,7 @@ gradlew.bat clean build
 
 ## 実機テスト用Admin Command
 
-通常運用では使用不要です。`/asbp`以下はOPまたは`amaro.survival.admin`権限を持つ管理者だけが実行できます。Consoleからも実行できます。認証情報は表示しません。
+通常運用では使用不要です。`/asbp`以下はLauncherで明示設定したTest Admin、OP、または`amaro.survival.admin`権限を持つ管理者だけが実行できます。Consoleからも実行できます。認証情報は表示しません。
 
 | Command | 用途 | 期待結果 |
 | --- | --- | --- |
@@ -83,7 +110,7 @@ gradlew.bat clean build
 | `/asbp test raid start` | BASE_RAID開始 | 本番Raid Runtimeと通知を開始 |
 | `/asbp test raid stop` | 実行中Raid停止 | Task、BossBar、Raid状態を安全に終了 |
 | `/asbp test raid status` | Raid状態確認 | active、残り秒、現在Waveを表示 |
-| `/asbp test mobs count` | 所有Mob容量確認 | 現在数、上限80、残Capacityを表示 |
+| `/asbp test mobs count` | 所有Mob数確認 | 現在のASBP所有Mob数を表示 |
 | `/asbp test mobs cleanup` | テストMob回収 | PDC所有marker付きMobだけ削除 |
 | `/asbp test youtube fake <author> <message...>` | YouTube Adapter以降を再現 | Chat転送、Gauge加算、抽選、妨害まで本番処理を共有 |
 

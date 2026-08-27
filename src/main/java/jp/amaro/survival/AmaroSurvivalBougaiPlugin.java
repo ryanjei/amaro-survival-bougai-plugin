@@ -5,6 +5,7 @@ import jp.amaro.survival.command.*;
 import jp.amaro.survival.domain.*;
 import jp.amaro.survival.paper.*;
 import jp.amaro.survival.youtube.*;
+import jp.amaro.survival.bootstrap.LauncherShutdownServer;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -18,6 +19,7 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
     private BossBar gaugeBar; private BaseRaidRuntime raid; private OwnedMobService ownership; private YouTubePoller poller;
     private CommentGauge gauge; private WeightedInterferenceSelector selector; private InterferenceRuntime interference;
     private PluginSettings settings;
+    private LauncherShutdownServer shutdownServer;
 
     @Override public void onEnable() {
         saveDefaultConfig();
@@ -27,17 +29,25 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
         selector = new WeightedInterferenceSelector(settings.categoryWeights(), ThreadLocalRandom.current());
         gaugeBar = BossBar.bossBar(Component.text("視聴者妨害 0%"), 0f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
         ownership = new OwnedMobService(this);
-        raid = new BaseRaidRuntime(this, settings, ownership, ThreadLocalRandom.current());
+        org.bukkit.World raidWorld = Bukkit.getWorlds().stream().filter(world -> world.getEnvironment() == org.bukkit.World.Environment.NORMAL).findFirst().orElse(null);
+        if (raidWorld != null) raidWorld.setGameRule(org.bukkit.GameRules.RESPAWN_RADIUS, 0);
+        raid = new BaseRaidRuntime(this, settings, ownership, ThreadLocalRandom.current(), raidWorld);
         interference = new InterferenceRuntime(ownership, raid, ThreadLocalRandom.current(), getLogger());
         Bukkit.getOnlinePlayers().forEach(player -> player.showBossBar(gaugeBar));
-        getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(gaugeBar, raid), this);
-        AdminTestCommand adminCommand = new AdminTestCommand(this);
+        TestAdminAuthorizer authorizer = new TestAdminAuthorizer(getDataFolder().toPath().resolve("test-admin.properties"));
+        getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(gaugeBar, raid, authorizer::bootstrap, raidWorld), this);
+        Bukkit.getOnlinePlayers().forEach(authorizer::bootstrap);
+        AdminTestCommand adminCommand = new AdminTestCommand(this, authorizer::isAuthorized);
         if (getCommand("asbp") == null) throw new IllegalStateException("plugin.ymlにasbp Commandがありません。");
         getCommand("asbp").setExecutor(adminCommand);
         getCommand("asbp").setTabCompleter(adminCommand);
         if (settings.youtubeEnabled()) startYouTube(settings);
         else getLogger().info("YouTube連携はconfigで停止しています。Minecraftプラグインは通常稼働します。");
         getLogger().info("Amaro Survival Bougai Plugin v0.1 を有効化しました。");
+        try {
+            shutdownServer = new LauncherShutdownServer(getDataFolder().toPath().resolve("launcher-shutdown.token"), () -> Bukkit.getScheduler().runTask(this, () -> getServer().shutdown()));
+            shutdownServer.start();
+        } catch (Exception exception) { throw new IllegalStateException("Launcher安全停止受付を開始できません", exception); }
     }
 
     private void startYouTube(PluginSettings settings) {
@@ -54,7 +64,8 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
     }
 
     private void processComment(YouTubeComment comment) {
-        Bukkit.broadcast(Component.text("[YT] " + comment.author() + ": " + comment.message()));
+        Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(YouTubeChatFormatter.minecraft(comment)));
+        getLogger().info(YouTubeChatFormatter.console(comment));
         if (!settings.interferenceEnabled()) return;
         advanceGauge();
     }
@@ -81,7 +92,7 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
         int owned = ownership.countOwned();
         return new StatusSnapshot(isEnabled(), settings.youtubeEnabled(), settings.interferenceEnabled(),
                 gauge.comments(), gauge.requiredComments(), (int) Math.floor(gauge.progress() * 100), raid.active(),
-                owned, Math.max(0, OwnedMobService.MAX_OWNED_MOBS - owned), Bukkit.getOnlinePlayers().size());
+                owned, Bukkit.getOnlinePlayers().size());
     }
 
     @Override public void addGauge(int count) { for (int i = 0; i < count; i++) advanceGauge(); }
@@ -93,6 +104,7 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
     @Override public void fakeYouTubeComment(String author, String message) { processComment(new YouTubeComment("admin-fake", author, message)); }
 
     @Override public void onDisable() {
+        if (shutdownServer != null) shutdownServer.close();
         if (poller != null) poller.close();
         if (raid != null) raid.stop(false);
         if (gaugeBar != null) Bukkit.getOnlinePlayers().forEach(player -> player.hideBossBar(gaugeBar));

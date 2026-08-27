@@ -12,11 +12,13 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     public static final String PERMISSION = "amaro.survival.admin";
     private static final int MAX_GAUGE_ADD = 100;
     private final AdminOperations operations;
+    private final java.util.function.Predicate<CommandSender> administrator;
 
-    public AdminTestCommand(AdminOperations operations) { this.operations = operations; }
+    public AdminTestCommand(AdminOperations operations) { this(operations, sender -> sender.hasPermission(PERMISSION)); }
+    public AdminTestCommand(AdminOperations operations, java.util.function.Predicate<CommandSender> administrator) { this.operations = operations; this.administrator = administrator; }
 
     @Override public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        if (!sender.hasPermission(PERMISSION)) { reply(sender, "このCommandを実行する権限がありません。"); return true; }
+        if (!administrator.test(sender)) { reply(sender, "このCommandを実行する権限がありません。"); return true; }
         if (args.length < 2 || !args[0].equalsIgnoreCase("test")) { usage(sender); return true; }
         try {
             return switch (args[1].toLowerCase(Locale.ROOT)) {
@@ -37,12 +39,13 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     private boolean status(CommandSender sender, String[] args) {
         if (args.length != 2) { usage(sender); return true; }
         AdminOperations.StatusSnapshot s = operations.status();
-        reply(sender, "Plugin: " + state(s.pluginEnabled()));
-        reply(sender, "YouTube: " + state(s.youtubeEnabled()) + " / 妨害: " + state(s.interferenceEnabled()));
-        reply(sender, "Gauge: %d / %d (%d%%)".formatted(s.gaugeCurrent(), s.gaugeRequired(), s.gaugePercent()));
-        reply(sender, "Base Raid: " + (s.raidActive() ? "active" : "inactive"));
-        reply(sender, "Owned Mob: %d / 80 (remaining %d)".formatted(s.ownedMobs(), s.remainingCapacity()));
-        reply(sender, "Online Player: " + s.onlinePlayers());
+        reply(sender, "プラグイン: " + state(s.pluginEnabled()));
+        reply(sender, "YouTube連携: " + state(s.youtubeEnabled()));
+        reply(sender, "妨害機能: " + state(s.interferenceEnabled()));
+        reply(sender, "妨害ゲージ: %d / %d (%d%%)".formatted(s.gaugeCurrent(), s.gaugeRequired(), s.gaugePercent()));
+        reply(sender, "拠点襲撃: " + (s.raidActive() ? "進行中" : "停止中"));
+        reply(sender, "ASBP所有Mob: %d体".formatted(s.ownedMobs()));
+        reply(sender, "オンライン人数: " + s.onlinePlayers() + "人");
         return true;
     }
 
@@ -54,7 +57,7 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
 
     private boolean interference(CommandSender sender, String[] args) {
         if (args.length != 3) { interferenceTypes(sender); return true; }
-        try { InterferenceType type = InterferenceType.valueOf(args[2].toUpperCase(Locale.ROOT)); operations.applyInterference(type); reply(sender, type.name() + "を発動しました。"); }
+        try { InterferenceType type = InterferenceType.valueOf(args[2].toUpperCase(Locale.ROOT)); operations.applyInterference(type); reply(sender, "妨害「" + type.displayName() + "」を発動しました。"); }
         catch (IllegalArgumentException exception) { interferenceTypes(sender); }
         return true;
     }
@@ -62,9 +65,9 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     private boolean raid(CommandSender sender, String[] args) {
         if (args.length != 3) { usage(sender); return true; }
         switch (args[2].toLowerCase(Locale.ROOT)) {
-            case "start" -> { operations.startRaid(); reply(sender, "BASE_RAID開始を要求しました。"); }
-            case "stop" -> { operations.stopRaid(); reply(sender, "BASE_RAIDを停止しました。"); }
-            case "status" -> { AdminOperations.RaidSnapshot s = operations.raidStatus(); reply(sender, s.active() ? "BASE_RAID active / remaining %ds / wave %d".formatted(s.remainingSeconds(), s.currentWave()) : "BASE_RAID inactive"); }
+            case "start" -> { operations.startRaid(); reply(sender, "拠点襲撃の開始を要求しました。"); }
+            case "stop" -> { operations.stopRaid(); reply(sender, "拠点襲撃を停止しました。"); }
+            case "status" -> { AdminOperations.RaidSnapshot s = operations.raidStatus(); reply(sender, s.active() ? "拠点襲撃: 進行中 / 残り%d秒 / 第%dウェーブ".formatted(s.remainingSeconds(), s.currentWave()) : "拠点襲撃: 停止中"); }
             default -> usage(sender);
         }
         return true;
@@ -72,8 +75,8 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
 
     private boolean mobs(CommandSender sender, String[] args) {
         if (args.length != 3) { usage(sender); return true; }
-        if (args[2].equalsIgnoreCase("count")) { AdminOperations.StatusSnapshot s = operations.status(); reply(sender, "Owned Mob: %d / 80 (remaining %d)".formatted(s.ownedMobs(), s.remainingCapacity())); }
-        else if (args[2].equalsIgnoreCase("cleanup")) reply(sender, operations.cleanupOwnedMobs() + "体のOPBP所有Mobをcleanupしました。");
+        if (args[2].equalsIgnoreCase("count")) { AdminOperations.StatusSnapshot s = operations.status(); reply(sender, "ASBP所有Mob: %d体".formatted(s.ownedMobs())); }
+        else if (args[2].equalsIgnoreCase("cleanup")) reply(sender, operations.cleanupOwnedMobs() + "体のASBP所有Mobをcleanupしました。");
         else usage(sender);
         return true;
     }
@@ -94,12 +97,12 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
 
     private static void interferenceTypes(CommandSender sender) { reply(sender, "type候補: " + String.join(", ", Arrays.stream(InterferenceType.values()).map(Enum::name).toList())); }
     private static void usage(CommandSender sender) { reply(sender, "使用方法: /asbp test <status|gauge add [count]|interference <type>|raid <start|stop|status>|mobs <count|cleanup>|youtube fake <author> <message...>>"); }
-    private static String state(boolean value) { return value ? "enabled" : "disabled"; }
+    private static String state(boolean value) { return value ? "有効" : "無効"; }
     private static String safeMessage(RuntimeException exception) { return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage(); }
     private static void reply(CommandSender sender, String message) { sender.sendMessage(Component.text("[ASBP] " + message)); }
 
     @Override public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
-        if (!sender.hasPermission(PERMISSION)) return List.of();
+        if (!administrator.test(sender)) return List.of();
         if (args.length == 1) return matches(args[0], List.of("test"));
         if (args.length == 2) return matches(args[1], List.of("status", "gauge", "interference", "raid", "mobs", "youtube"));
         if (args.length == 3 && args[1].equalsIgnoreCase("interference")) return matches(args[2], Arrays.stream(InterferenceType.values()).map(Enum::name).toList());
