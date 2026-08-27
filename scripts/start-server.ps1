@@ -15,6 +15,12 @@ $paperVersion = '26.2'
 $paperBuild = '112'
 $paperApi = "https://fill.papermc.io/v3/projects/paper/versions/$paperVersion/builds"
 $userAgent = 'amaro-survival-bougai-launcher/0.1 (https://github.com/ryanjei/amaro-survival-bougai-plugin)'
+$runtimePluginDefinitions = @(
+    @{ DisplayName = 'Geyser'; FileName = 'Geyser-Spigot.jar'; Version = '2.10.1 build 1177'; Url = 'https://download.geysermc.org/v2/projects/geyser/versions/2.10.1/builds/1177/downloads/spigot'; Sha256 = '52a04e22c4876a357b57a90588c5e5e2996b7d67c5d919fac9091a092352abc2' },
+    @{ DisplayName = 'Floodgate'; FileName = 'floodgate-spigot.jar'; Version = '2.2.5 build 138'; Url = 'https://download.geysermc.org/v2/projects/floodgate/versions/2.2.5/builds/138/downloads/spigot'; Sha256 = '44bdb908e2fb4ff1b974d5313d048a625a21555a9844cfb86256a98e8e1c6bd1' },
+    @{ DisplayName = 'ViaVersion'; FileName = 'ViaVersion.jar'; Version = '5.10.0'; Url = 'https://github.com/ViaVersion/ViaVersion/releases/download/5.10.0/ViaVersion-5.10.0.jar'; Sha256 = 'ab137b62829721c8ced3c554ede904a6c02f6d1963c33b32d7d432bb25607b60' },
+    @{ DisplayName = 'ViaBackwards'; FileName = 'ViaBackwards.jar'; Version = '5.10.0'; Url = 'https://github.com/ViaVersion/ViaBackwards/releases/download/5.10.0/ViaBackwards-5.10.0.jar'; Sha256 = '107a6bce08b1661382b8590df7c0ab714bc5967a93c1bba2d71531448689ce82' }
+)
 $paperProcess = $null
 $transcriptStarted = $false
 
@@ -116,15 +122,86 @@ function Confirm-Eula {
     if ($choice -ne 'Y') { Stop-WithMessage 'EULAへ同意していないためPaperは起動していません。' }
     Set-Content -LiteralPath $eula -Value 'eula=true' -Encoding ascii
 }
+function Install-RuntimePlugin([hashtable]$definition) {
+    $target = Join-Path $plugins $definition.FileName
+    Show-Step "$($definition.DisplayName) $($definition.Version) を確認しています。"
+    if ((Test-Path -LiteralPath $target) -and (Get-Sha256 $target) -eq $definition.Sha256) {
+        Write-Host "$($definition.DisplayName): 固定版 / SHA-256検証済み"
+        return
+    }
+    $temporary = "$target.download"
+    Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+    try { Invoke-WebRequest -Headers @{'User-Agent' = $userAgent} -Uri $definition.Url -OutFile $temporary -TimeoutSec 120 }
+    catch {
+        Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        Stop-WithMessage "$($definition.DisplayName)の公式配布JAR取得に失敗しました。不完全なJARでは起動しません。"
+    }
+    if ((Get-Sha256 $temporary) -ne $definition.Sha256) {
+        Remove-Item -LiteralPath $temporary -Force
+        Stop-WithMessage "$($definition.DisplayName)のSHA-256検証に失敗しました。既存JARは変更していません。"
+    }
+    Move-Item -LiteralPath $temporary -Destination $target -Force
+    Write-Host "$($definition.DisplayName): 配置完了 / SHA-256検証済み"
+}
+function Set-YamlSectionValue([Collections.Generic.List[string]]$lines, [string]$section, [string]$key, [string]$value) {
+    $sectionIndex = -1
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -match ('^' + [Regex]::Escape($section) + ':\s*$')) { $sectionIndex = $index; break }
+    }
+    if ($sectionIndex -lt 0) { Stop-WithMessage "Geyser configに現行の$section sectionを確認できません。設定を推測で変更しません。" }
+    $sectionEnd = $lines.Count
+    for ($index = $sectionIndex + 1; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -match '^[^\s#][^:]*:\s*') { $sectionEnd = $index; break }
+    }
+    for ($index = $sectionIndex + 1; $index -lt $sectionEnd; $index++) {
+        if ($lines[$index] -match ('^\s{2}' + [Regex]::Escape($key) + ':\s*')) {
+            $lines[$index] = "  ${key}: $value"
+            return
+        }
+    }
+    $lines.Insert($sectionIndex + 1, "  ${key}: $value")
+}
+function Initialize-GeyserConfig([bool]$wasAbsentBeforeStart) {
+    if (-not $wasAbsentBeforeStart) { return }
+    $config = Join-Path $plugins 'Geyser-Spigot\config.yml'
+    if (-not (Test-Path -LiteralPath $config)) {
+        Write-Host '[ASBP] Geyser初期configが生成されなかったため変更していません。Paper logを確認してください。' -ForegroundColor Yellow
+        return
+    }
+    Show-Step '初回生成されたGeyser configへFloodgate接続設定を適用しています。'
+    $lines = [Collections.Generic.List[string]]::new()
+    Get-Content -LiteralPath $config | ForEach-Object { $lines.Add($_) }
+    Set-YamlSectionValue $lines 'bedrock' 'address' '0.0.0.0'
+    Set-YamlSectionValue $lines 'bedrock' 'port' '19132'
+    Set-YamlSectionValue $lines 'java' 'auth-type' 'floodgate'
+    $temporary = "$config.asbp-new"
+    $lines | Set-Content -LiteralPath $temporary -Encoding utf8
+    Move-Item -LiteralPath $temporary -Destination $config -Force
+    Write-Host '[ASBP] Geyser初期設定完了: Bedrock UDP 19132 / Floodgate認証。次回起動以降はユーザー設定を上書きしません。' -ForegroundColor Green
+}
 function Stop-PaperSafely {
-    if ($null -eq $paperProcess -or $paperProcess.HasExited) { return }
+    if ($null -eq $paperProcess -or $paperProcess.HasExited) { return $true }
     Show-Step 'Paperへstopを送信し、World保存と正常終了を待っています。'
     try { $paperProcess.StandardInput.WriteLine('stop'); $paperProcess.StandardInput.Flush(); $paperProcess.StandardInput.Close() }
-    catch { Write-Host '[ASBP] stop送信に失敗しました。データ保護のため強制終了は行いません。' -ForegroundColor Red; return }
+    catch {
+        Write-Host '[ASBP] stop送信に失敗しました。Paper Serverはまだ動作しています。' -ForegroundColor Red
+        Write-Host '[ASBP] データ保護のため強制終了しません。LauncherはPaperの終了を確認するまで待機します。' -ForegroundColor Yellow
+        $lastNotice = [DateTime]::UtcNow
+        while (-not $paperProcess.HasExited) {
+            Start-Sleep -Seconds 1
+            if (([DateTime]::UtcNow - $lastNotice).TotalSeconds -ge 30) {
+                Write-Host '[ASBP] Paper Serverは引き続き動作中です。正常停止は確認できていません。Windowを閉じないでください。' -ForegroundColor Red
+                $lastNotice = [DateTime]::UtcNow
+            }
+        }
+        Write-Host '[ASBP] Paper Processの終了を確認しましたが、stop送信に失敗したため正常停止扱いにはしません。' -ForegroundColor Red
+        return $false
+    }
     if (-not $paperProcess.WaitForExit(120000)) {
         Write-Host '[ASBP] 保存に時間がかかっています。強制終了せず、そのまま待機します。' -ForegroundColor Yellow
         $paperProcess.WaitForExit()
     }
+    return $true
 }
 
 try {
@@ -162,6 +239,10 @@ try {
     Move-Item -LiteralPath $stagedPlugin -Destination $deployedPlugin -Force
     Write-Host "Plugin配置: $deployedPlugin"
 
+    Show-Step 'Runtime Pluginを固定版・SHA-256検証付きで確認しています。'
+    foreach ($definition in $runtimePluginDefinitions) { Install-RuntimePlugin $definition }
+    $geyserConfigWasAbsent = -not (Test-Path -LiteralPath (Join-Path $plugins 'Geyser-Spigot\config.yml'))
+
     Confirm-Eula
 
     Show-Step 'Paperを起動しています。'
@@ -173,29 +254,35 @@ try {
     $info.WorkingDirectory = $runtime
     $info.UseShellExecute = $false
     $info.RedirectStandardInput = $true
-    $info.Arguments = '-Xms1G -Xmx2G -Dpaper.disableStartupVersionCheck=true -jar "' + $paperJar + '" --nogui'
+    $info.Arguments = '-Xms1G -Xmx2G -Dpaper.disableStartupVersionCheck=true -DgeyserUdpAddress=0.0.0.0 -DgeyserUdpPort=19132 -jar "' + $paperJar + '" --nogui'
     $paperProcess = [Diagnostics.Process]::Start($info)
     if ($null -eq $paperProcess) { Stop-WithMessage 'Paper processを開始できませんでした。' }
     $originalControlC = [Console]::TreatControlCAsInput
     [Console]::TreatControlCAsInput = $true
+    $stopSucceeded = $true
     try {
         while (-not $paperProcess.HasExited) {
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
                 $stopRequested = $key.KeyChar.ToString().ToUpperInvariant() -eq 'Y' -or (($key.Modifiers -band [ConsoleModifiers]::Control) -and $key.Key -eq [ConsoleKey]::C)
-                if ($stopRequested) { Stop-PaperSafely; break }
+                if ($stopRequested) { $stopSucceeded = Stop-PaperSafely; break }
             }
             Start-Sleep -Milliseconds 100
         }
     } finally { [Console]::TreatControlCAsInput = $originalControlC }
-    if (-not $paperProcess.HasExited) { Stop-PaperSafely }
+    if (-not $paperProcess.HasExited) { $stopSucceeded = Stop-PaperSafely }
     $paperProcess.WaitForExit()
+    Initialize-GeyserConfig $geyserConfigWasAbsent
     Write-Host "Paper終了コード: $($paperProcess.ExitCode)"
+    if (-not $stopSucceeded) { Stop-WithMessage 'Paperへのstop送信に失敗しました。Process終了は確認しましたが、安全な正常停止は確認できませんでした。' }
     if ($paperProcess.ExitCode -ne 0) { Stop-WithMessage "Paperが異常終了しました。終了コード=$($paperProcess.ExitCode)" }
     Show-Step 'Paperを安全に停止しました。'
     exit 0
 } catch {
-    if ($null -ne $paperProcess -and -not $paperProcess.HasExited) { Stop-PaperSafely }
+    if ($null -ne $paperProcess -and -not $paperProcess.HasExited) {
+        $catchStopSucceeded = Stop-PaperSafely
+        if (-not $catchStopSucceeded) { Write-Host '[ASBP] Launcher例外後のPaper正常停止も確認できませんでした。' -ForegroundColor Red }
+    }
     Write-Host ''
     Write-Host "[ASBP] エラー: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Launcher log: $launcherLog"

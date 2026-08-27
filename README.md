@@ -8,7 +8,7 @@
 - Paper 26.2（Purpur等のPaper互換サーバーも想定）
 - Java 25
 - 約10人までの生活サーバーを初期想定
-- Geyser + Floodgate環境を想定。Bedrock参加者も通常のオンラインプレイヤーとして扱います。本プラグインはBedrockプロトコルを実装しません。
+- Geyser + Floodgate環境を標準構成として想定。Bedrock参加者も通常のオンラインプレイヤーとして扱います。本プラグインはBedrockプロトコルを実装しません。
 
 ## 導入
 
@@ -25,11 +25,22 @@ WindowsではRepository rootの`START_SERVER.bat`をダブルクリックする�
 
 1. `START_SERVER.bat`をダブルクリックします。
 2. 初回だけ表示されたMinecraft EULAを確認し、同意する場合は`Y`を入力します。Launcherが勝手に同意することはありません。
-3. Minecraft Java Editionを起動し、`localhost`へ接続します。
+3. Minecraft Java Editionは`localhost:25565`、Bedrock Editionは同じPCまたはLAN内のServer addressとUDP port `19132`へ接続します。
 4. OP権限で`/asbp test status`を実行します。
 5. 終了時はLauncher Windowで`Y`を押します。Paperへ正式な`stop`を送り、World保存を待って終了します。
 
-開発Server、World、logは`.runtime/paper/`、Launcher logは`.runtime/logs/launcher-latest.log`へ保存され、Gitには含まれません。Paper 26.2 build 112はPaperMC公式配布APIから取得し、SHA-256検証後に使用します。Build失敗時はPaperを起動せず、過去のASBP JARへフォールバックしません。他PluginのJAR、既存`server.properties`、YouTube Secretは変更しません。
+開発Server、World、logは`.runtime/paper/`、Launcher logは`.runtime/logs/launcher-latest.log`へ保存され、Gitには含まれません。Paper 26.2 build 112と次のRuntime Pluginは公式配布元から固定版を取得し、SHA-256検証後に使用します。
+
+- Geyser-Spigot 2.10.1 build 1177（GeyserMC公式Download API）
+- Floodgate-Spigot 2.2.5 build 138（GeyserMC公式Download API）
+- ViaVersion 5.10.0（公式GitHub Release）
+- ViaBackwards 5.10.0（公式GitHub Release）
+
+Build失敗時はPaperを起動せず、過去のASBP JARへフォールバックしません。Launcherが管理するのはASBPと上記4 JARの固定ファイル名だけで、ユーザーが追加した他Plugin JARや既存設定Directoryは削除・上書きしません。ViaVersion系APIやGeyser/Floodgate APIへのASBP本体依存は追加していません。
+
+Geyserの初回起動ではUDP `19132`を使用し、同じPaper Serverへ接続します。Floodgateが同時に読み込まれるため初回RuntimeもFloodgate認証が選択され、初回停止後に生成済み`plugins/Geyser-Spigot/config.yml`の`bedrock.address`、`bedrock.port`、`java.auth-type`だけを現行schemaに従って確定します。既存configがある場合や2回目以降はLauncherが上書きしません。Floodgateが生成する`key.pem`等は`.runtime`内だけに保持され、GitやLauncher logへ出力されません。
+
+`stop`送信自体に失敗した場合、LauncherはPaperを強制終了せず、「Paper Serverはまだ動作しています」と明示したままProcess終了まで監視します。この経路は正常停止扱いになりません。表示が続いている間はWindowやPCを終了せず、Server状態を確認してください。
 
 実機確認の全手順は[docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)を参照してください。
 

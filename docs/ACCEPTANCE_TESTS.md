@@ -6,11 +6,16 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 
 1. Repository rootの`START_SERVER.bat`をダブルクリックする。
 2. Java 25確認、clean build、Unit Test、Paper 26.2 build 112確認、ASBP JAR配置が成功することを確認する。
-3. 初回だけMinecraft EULAのリンクを確認し、同意する場合のみ`Y`を入力する。`N`ではPaperが起動しないことを確認する。
-4. Minecraft Java Editionから`localhost`へ接続する。
-5. ConsoleでASBPがenableされ、YouTube設定不足時もPaperが稼働を続けることを確認する。
-6. Launcher Windowで`Y`を押し、Paperへ`stop`が送られ、World保存、Plugin disable、終了コード0となることを確認する。
-7. 再度起動し、World、`config.yml`、`secrets.properties`が上書きされず維持されることを確認する。
+3. Geyser 2.10.1 build 1177、Floodgate 2.2.5 build 138、ViaVersion 5.10.0、ViaBackwards 5.10.0が固定版・SHA-256検証付きで配置されることを確認する。
+4. 初回だけMinecraft EULAのリンクを確認し、同意する場合のみ`Y`を入力する。`N`ではPaperが起動しないことを確認する。
+5. Minecraft Java Editionから`localhost`へ接続する。
+6. Consoleまたは`latest.log`でAmaroSurvivalBougaiPlugin、Geyser、Floodgate、ViaVersion、ViaBackwardsがすべて正常enableされ、Plugin load errorがないことを確認する。
+7. YouTube設定不足時もPaperが稼働を続けることを確認する。
+8. Launcher Windowで`Y`を押し、Paperへ`stop`が送られ、World保存、Plugin disable、終了コード0となることを確認する。
+9. `Ctrl+C`とLauncher例外時も、Paper稼働中なら同じstop送信・保存待機経路へ収束することを確認する。
+10. stop送信失敗時は強制killせず、Paperがまだ稼働中であることを30秒ごとに明示し、Process終了後も正常停止扱いにならないことを確認する。
+11. 再度起動し、World、ASBP/Geyser/Floodgate/ViaVersion/ViaBackwardsの各config、`key.pem`、`secrets.properties`が上書きされず維持されることを確認する。
+12. `plugins`へ無関係なテスト用JARを置いて再起動し、Launcherが削除・変更しないことを確認する。
 
 不合格条件: Build失敗後にPaperが起動する、古いPlugin JARが使われる、EULAが無断承認される、強制killされる、他Plugin JARが消える。
 
@@ -73,7 +78,7 @@ OPまたは`amaro.survival.admin`権限で次を確認する。一般Playerで�
 - `interference.enabled=false`ではFake CommentをChat表示するがGauge・妨害を進めない。
 - 必要コメント数0、Weight合計0、Raid半径8未満、Wave Mob数41等の不正安全値でASBPがfail-safeとなり、理由がlogに出る。
 
-## Gate 5: 実YouTube Live Chat・Geyser・Floodgate
+## Gate 5: 実YouTube Live Chat・Java / Bedrock互換
 
 Gate 1～4合格後に実施する。
 
@@ -82,6 +87,12 @@ Gate 1～4合格後に実施する。
 3. 同じComment IDが再取得されても二重加算されないことを確認する。
 4. Plugin接続前の既存コメント履歴がGaugeへ加算されないことを確認する。
 5. API停止・無効認証時にYouTube連携だけが停止し、PaperとASBPの他機能が継続することを確認する。
-6. Geyser/Floodgate経由のBedrock PlayerがOnline Player数へ含まれ、SMALL/MEDIUM妨害、Title、BossBarの対象になることを確認する。
+6. Java Edition 26.2からTCP `25565`へ接続できることを確認する。
+7. 現在Geyser 2.10.1 build 1177が正式対応するBedrock EditionからUDP `19132`へ接続できることを確認する。
+8. Java Edition Accountを持たないBedrock AccountがFloodgate経由で参加できることを確認する。
+9. Bedrock Playerが`/asbp test status`のOnline Player数へ含まれ、SMALL妨害、MEDIUM妨害のPlayer周辺生成、Title、BossBarの対象になることを確認する。
+10. BASE_RAID中もBedrock Playerが通常Playerとして行動でき、切断・再接続でASBP errorが発生しないことを確認する。
+11. ViaBackwards 5.10.0の対応対象から少なくとも1つの旧Java Client versionで接続を確認する。
+12. Server 26.2より新しいJava Clientは、ViaVersion 5.10.0または後続の受入済み固定版がそのversionを正式対応した時点で確認する。存在しない未来versionは対象にしない。
 
-Geyser/Floodgate本体の導入・認証・互換性問題はASBPの独自プロトコル実装ではなく、Server構成として切り分ける。
+Geyser/Floodgate/ViaVersion/ViaBackwards本体の導入・認証・互換性問題はASBPの独自プロトコル実装ではなく、Server構成として切り分ける。Local実機確認はLAN内を基本とし、Router port forward、Firewall、本番Server公開は別作業とする。
