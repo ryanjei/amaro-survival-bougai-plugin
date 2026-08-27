@@ -73,7 +73,7 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     private boolean mobs(CommandSender sender, String[] args) {
         if (args.length != 3) { usage(sender); return true; }
         if (args[2].equalsIgnoreCase("count")) { AdminOperations.StatusSnapshot s = operations.status(); reply(sender, "Owned Mob: %d / 80 (remaining %d)".formatted(s.ownedMobs(), s.remainingCapacity())); }
-        else if (args[2].equalsIgnoreCase("cleanup")) reply(sender, operations.cleanupOwnedMobs() + "体のOPBP所有Mobをcleanupしました。");
+        else if (args[2].equalsIgnoreCase("cleanup")) reply(sender, operations.cleanupOwnedMobs() + "体のASBP所有Mobをcleanupしました。");
         else usage(sender);
         return true;
     }

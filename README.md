@@ -19,6 +19,20 @@
 
 日常運用ではサーバーの通常の起動・停止だけで動作し、PowerShellやCLI操作は不要です。
 
+## ローカル実機テスト
+
+WindowsではRepository rootの`START_SERVER.bat`をダブルクリックするだけで、現在checkout中のsourceをclean buildし、検証済みPaperと最新ASBP JARでローカルサーバーを起動できます。
+
+1. `START_SERVER.bat`をダブルクリックします。
+2. 初回だけ表示されたMinecraft EULAを確認し、同意する場合は`Y`を入力します。Launcherが勝手に同意することはありません。
+3. Minecraft Java Editionを起動し、`localhost`へ接続します。
+4. OP権限で`/asbp test status`を実行します。
+5. 終了時はLauncher Windowで`Y`を押します。Paperへ正式な`stop`を送り、World保存を待って終了します。
+
+開発Server、World、logは`.runtime/paper/`、Launcher logは`.runtime/logs/launcher-latest.log`へ保存され、Gitには含まれません。Paper 26.2 build 112はPaperMC公式配布APIから取得し、SHA-256検証後に使用します。Build失敗時はPaperを起動せず、過去のASBP JARへフォールバックしません。他PluginのJAR、既存`server.properties`、YouTube Secretは変更しません。
+
+実機確認の全手順は[docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)を参照してください。
+
 ## YouTube Live Chat設定
 
 Google Cloud ConsoleでYouTube Data API v3を有効化し、公開Live Chatを取得できるAPI Keyと対象配信のLive Chat IDを用意します。Repositoryの `secrets.properties.example` を参考に、サーバー側だけに次を保存してください。
