@@ -29,11 +29,13 @@ public final class AmaroSurvivalBougaiPlugin extends JavaPlugin implements Admin
         selector = new WeightedInterferenceSelector(settings.categoryWeights(), ThreadLocalRandom.current());
         gaugeBar = BossBar.bossBar(Component.text("視聴者妨害 0%"), 0f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
         ownership = new OwnedMobService(this);
-        raid = new BaseRaidRuntime(this, settings, ownership, ThreadLocalRandom.current());
+        org.bukkit.World raidWorld = Bukkit.getWorlds().stream().filter(world -> world.getEnvironment() == org.bukkit.World.Environment.NORMAL).findFirst().orElse(null);
+        if (raidWorld != null) raidWorld.setGameRule(org.bukkit.GameRules.RESPAWN_RADIUS, 0);
+        raid = new BaseRaidRuntime(this, settings, ownership, ThreadLocalRandom.current(), raidWorld);
         interference = new InterferenceRuntime(ownership, raid, ThreadLocalRandom.current(), getLogger());
         Bukkit.getOnlinePlayers().forEach(player -> player.showBossBar(gaugeBar));
         TestAdminAuthorizer authorizer = new TestAdminAuthorizer(getDataFolder().toPath().resolve("test-admin.properties"));
-        getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(gaugeBar, raid, authorizer::bootstrap), this);
+        getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(gaugeBar, raid, authorizer::bootstrap, raidWorld), this);
         Bukkit.getOnlinePlayers().forEach(authorizer::bootstrap);
         AdminTestCommand adminCommand = new AdminTestCommand(this, authorizer::isAuthorized);
         if (getCommand("asbp") == null) throw new IllegalStateException("plugin.ymlにasbp Commandがありません。");

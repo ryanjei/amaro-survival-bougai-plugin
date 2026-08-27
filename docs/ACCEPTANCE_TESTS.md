@@ -6,7 +6,7 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 
 1. Repository rootの`START_SERVER.bat`をダブルクリックする。
 2. Java 25確認、clean build、Unit Test、Paper 26.2 build 112確認、ASBP JAR配置が成功することを確認する。
-3. Geyser 2.11.2 build 1233、Floodgate 2.2.5 build 138、ViaVersion 5.10.0、ViaBackwards 5.10.0が固定版・SHA-256検証付きで配置されることを確認する。
+3. Geyser 2.11.2 build 1233、Floodgate 2.2.5 build 138、ViaVersion 5.11.0、ViaBackwards 5.11.0が固定版・SHA-256検証付きで配置されることを確認する。
 4. 初回だけMinecraft EULAのリンクを確認し、同意する場合のみ`Y`を入力する。`N`ではPaperが起動しないことを確認する。
 5. Minecraft Java Editionから`localhost`へ接続する。
 6. Consoleまたは`latest.log`でAmaroSurvivalBougaiPlugin、Geyser、Floodgate、ViaVersion、ViaBackwardsがすべて正常enableされ、Plugin load errorがないことを確認する。
@@ -63,14 +63,18 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 
 ## Gate 4: Base Raid・所有Mob・Cleanup・Shutdown
 
-1. `/asbp test raid start`で初期スポーン周辺にRaidが開始し、Title、Chat、残り時間BossBarが表示されることを確認する。
-2. `/asbp test raid status`でactive、残り秒、Waveが更新されることを確認する。
-3. 複数WaveのMob構成が混成で、初期スポーン半径内に生成されることを確認する。
-4. `/asbp test mobs count`で現在のASBP所有Mob数を確認する。
-5. 自然Mobを用意してから`/asbp test mobs cleanup`を実行し、ASBP所有Mobだけが削除されることを確認する。
-6. `/asbp test raid stop`で新規WaveとRaid BossBarが停止することを確認する。
-7. stop後に再startし、初回Waveが再び生成されることを確認する。
-8. Raid中にLauncherの`Y`でPaperを停止し、Task/BossBar/Pollerが終了し、ASBP所有Mobだけがcleanupされることを確認する。
+1. 対象となる通常ワールドのスポーン半径が0であり、初期ログインと死亡後のRespawnが同じワールドスポーン地点になることを確認する。Nether・Endの設定が変更されていないことも確認する。
+2. `/asbp test raid start`でワールドスポーン周辺にRaidが開始し、Title、Chat、残り時間BossBarが表示されることを確認する。
+3. Waveごとに実際に生成されたMob内訳が日本語Subtitleで1回表示され、警告音が1回だけ鳴ることを確認する。
+4. Wave間に設定間隔・設定数でAmbient Mobが同じ半径内へ生成されることを確認する。
+5. `/asbp test raid stop`でWaveとAmbient Spawnの両方が止まり、再度startしてもAmbient Taskが二重化しないことを確認する。
+6. `/asbp test raid status`でactive、残り秒、Waveが更新されることを確認する。
+7. 複数WaveのMob構成が混成で、ワールドスポーン半径内に生成されることを確認する。
+8. `/asbp test mobs count`で現在のASBP所有Mob数を確認する。
+9. 自然Mobを用意してから`/asbp test mobs cleanup`を実行し、ASBP所有Mobだけが削除されることを確認する。
+10. `/asbp test raid stop`で新規WaveとRaid BossBarが停止することを確認する。
+11. stop後に再startし、初回Waveが再び生成されることを確認する。
+12. Raid中にLauncherの`Y`でPaperを停止し、Task/BossBar/Pollerが終了し、ASBP所有Mobだけがcleanupされることを確認する。
 
 ### Config
 
@@ -94,7 +98,7 @@ Gate 1～4合格後に実施する。
 8. Java Edition Accountを持たないBedrock AccountがFloodgate経由で参加できることを確認する。
 9. Bedrock Playerが`/asbp test status`のOnline Player数へ含まれ、SMALL妨害、MEDIUM妨害のPlayer周辺生成、Title、BossBarの対象になることを確認する。
 10. BASE_RAID中もBedrock Playerが通常Playerとして行動でき、切断・再接続でASBP errorが発生しないことを確認する。
-11. ViaBackwards 5.10.0の対応対象から少なくとも1つの旧Java Client versionで接続を確認する。
-12. Server 26.2より新しいJava Clientは、ViaVersion 5.10.0または後続の受入済み固定版がそのversionを正式対応した時点で確認する。存在しない未来versionは対象にしない。
+11. ViaBackwards 5.11.0の対応対象から少なくとも1つの旧Java Client versionで接続を確認する。
+12. Server 26.2より新しいJava Clientは、ViaVersion 5.11.0または後続の受入済み固定版がそのversionを正式対応した時点で確認する。存在しない未来versionは対象にしない。
 
 Geyser/Floodgate/ViaVersion/ViaBackwards本体の導入・認証・互換性問題はASBPの独自プロトコル実装ではなく、Server構成として切り分ける。Local実機確認はLAN内を基本とし、Router port forward、Firewall、本番Server公開は別作業とする。

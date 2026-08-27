@@ -33,8 +33,8 @@ WindowsではRepository rootの`START_SERVER.bat`をダブルクリックする�
 
 - Geyser-Spigot 2.11.2 build 1233（GeyserMC公式Download API、Bedrock 26.40対応）
 - Floodgate-Spigot 2.2.5 build 138（GeyserMC公式Download API）
-- ViaVersion 5.10.0（公式GitHub Release）
-- ViaBackwards 5.10.0（公式GitHub Release）
+- ViaVersion 5.11.0（公式GitHub Release、SHA-256固定）
+- ViaBackwards 5.11.0（公式GitHub Release、SHA-256固定）
 
 Build失敗時はPaperを起動せず、過去のASBP JARへフォールバックしません。Launcherが管理するのはASBPと上記4 JARの固定ファイル名だけで、ユーザーが追加した他Plugin JARや既存設定Directoryは削除・上書きしません。ViaVersion系APIやGeyser/Floodgate APIへのASBP本体依存は追加していません。
 
@@ -69,7 +69,7 @@ youtube.live-chat-id=YOUR_LIVE_CHAT_ID
 
 ## 拠点襲撃
 
-BASE_RAIDは最初に見つかった通常ワールドの初期スポーン地点を中心に、時間制限付きの混成Mobウェーブを生成します。Zombie、Husk、Drowned、Skeleton、Stray、Spider、Cave Spider、Creeper、Pillager、Vindicator、Witchを使用します。残り時間は専用BossBarで表示します。
+BASE_RAIDは最初に見つかった通常ワールドのワールドスポーン地点を開始時に中心として固定し、時間制限付きの混成Mobウェーブを生成します。対象ワールドのスポーン半径は0となり、同ワールドで死亡したプレイヤーもワールドスポーンへ復帰します。NetherやEndの設定は変更しません。Zombie、Husk、Drowned、Skeleton、Stray、Spider、Cave Spider、Creeper、Pillager、Vindicator、Witchを使用します。各Waveは実際に生成できたMob内訳をTitleとSubtitleで通知し、残り時間は専用BossBarで表示します。Wave間も初期設定では8秒ごとに2体のAmbient Mobを同じ範囲へ生成します。
 
 時間切れで新規ウェーブとBossBarを停止します。既存の自然Mobを一括削除しません。プラグインが生成したMobには所有タグを付け、Plugin disable時のみ所有Mobを安全に回収します。
 
@@ -83,6 +83,8 @@ BASE_RAIDは最初に見つかった通常ワールドの初期スポーン地�
 - `base-raid.radius`: 初期スポーンからの襲撃半径（8以上）
 - `base-raid.wave-interval-seconds`: ウェーブ間隔
 - `base-raid.mobs-per-wave`: 1ウェーブ基本Mob数（1～40）
+- `base-raid.ambient-spawn-interval-seconds`: Wave間の継続Spawn間隔（初期値8秒）
+- `base-raid.ambient-mobs-per-spawn`: Ambient Spawn 1回あたりのMob数（初期値2、1～20）
 
 不正な安全関連値ではプラグインを有効化せず、理由をコンソールへ表示します。
 
