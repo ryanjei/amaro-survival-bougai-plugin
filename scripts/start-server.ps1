@@ -11,6 +11,7 @@ $paperJar = Join-Path $runtime 'paper.jar'
 $paperMetadata = Join-Path $runtime 'paper-version.properties'
 $plugins = Join-Path $runtime 'plugins'
 $deployedPlugin = Join-Path $plugins 'amaro-survival-bougai-plugin.jar'
+$shutdownHandoff = Join-Path $plugins 'AmaroSurvivalBougaiPlugin\launcher-shutdown.token'
 $paperVersion = '26.2'
 $paperBuild = '112'
 $paperApi = "https://fill.papermc.io/v3/projects/paper/versions/$paperVersion/builds"
@@ -179,29 +180,14 @@ function Initialize-GeyserConfig([bool]$wasAbsentBeforeStart) {
     Move-Item -LiteralPath $temporary -Destination $config -Force
     Write-Host '[ASBP] Geyser初期設定完了: Bedrock UDP 19132 / Floodgate認証。次回起動以降はユーザー設定を上書きしません。' -ForegroundColor Green
 }
-function Stop-PaperSafely {
-    if ($null -eq $paperProcess -or $paperProcess.HasExited) { return $true }
-    Show-Step 'Paperへstopを送信し、World保存と正常終了を待っています。'
-    try { $paperProcess.StandardInput.WriteLine('stop'); $paperProcess.StandardInput.Flush(); $paperProcess.StandardInput.Close() }
-    catch {
-        Write-Host '[ASBP] stop送信に失敗しました。Paper Serverはまだ動作しています。' -ForegroundColor Red
-        Write-Host '[ASBP] データ保護のため強制終了しません。LauncherはPaperの終了を確認するまで待機します。' -ForegroundColor Yellow
-        $lastNotice = [DateTime]::UtcNow
-        while (-not $paperProcess.HasExited) {
-            Start-Sleep -Seconds 1
-            if (([DateTime]::UtcNow - $lastNotice).TotalSeconds -ge 30) {
-                Write-Host '[ASBP] Paper Serverは引き続き動作中です。正常停止は確認できていません。Windowを閉じないでください。' -ForegroundColor Red
-                $lastNotice = [DateTime]::UtcNow
-            }
-        }
-        Write-Host '[ASBP] Paper Processの終了を確認しましたが、stop送信に失敗したため正常停止扱いにはしません。' -ForegroundColor Red
-        return $false
-    }
-    if (-not $paperProcess.WaitForExit(120000)) {
-        Write-Host '[ASBP] 保存に時間がかかっています。強制終了せず、そのまま待機します。' -ForegroundColor Yellow
-        $paperProcess.WaitForExit()
-    }
-    return $true
+function Request-SafeShutdown {
+    if (-not (Test-Path -LiteralPath $shutdownHandoff)) { return $false }
+    $token = (Get-Content -LiteralPath $shutdownHandoff -Raw).Trim()
+    if ([string]::IsNullOrWhiteSpace($token)) { return $false }
+    try {
+        $response = Invoke-WebRequest -UseBasicParsing -Method Post -Uri 'http://127.0.0.1:8766/launcher/shutdown' -Headers @{'X-ASBP-Shutdown-Token' = $token} -TimeoutSec 10
+        return $response.StatusCode -eq 202
+    } catch { return $false }
 }
 
 try {
@@ -267,31 +253,38 @@ try {
     $info.Arguments = '-Xms1G -Xmx2G -Dpaper.disableStartupVersionCheck=true -DgeyserUdpAddress=0.0.0.0 -DgeyserUdpPort=19132 -jar "' + $paperJar + '" --nogui'
     $paperProcess = [Diagnostics.Process]::Start($info)
     if ($null -eq $paperProcess) { Stop-WithMessage 'Paper processを開始できませんでした。' }
+    $paperProcess.StandardInput.Close()
     $originalControlC = [Console]::TreatControlCAsInput
     [Console]::TreatControlCAsInput = $true
-    $stopSucceeded = $true
     try {
         while (-not $paperProcess.HasExited) {
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
                 $stopRequested = $key.KeyChar.ToString().ToUpperInvariant() -eq 'Y' -or (($key.Modifiers -band [ConsoleModifiers]::Control) -and $key.Key -eq [ConsoleKey]::C)
-                if ($stopRequested) { $stopSucceeded = Stop-PaperSafely; break }
+                if ($stopRequested) {
+                    Show-Step 'ASBP Pluginへ安全停止を要求しています。'
+                    if (Request-SafeShutdown) { Write-Host '[ASBP] 安全停止要求を受理しました。World保存と終了を待っています。' -ForegroundColor Yellow; break }
+                    Write-Host '[ASBP] 停止要求に失敗しました。Paper Serverはまだ稼働しています。強制終了しません。' -ForegroundColor Red
+                }
             }
             Start-Sleep -Milliseconds 100
         }
     } finally { [Console]::TreatControlCAsInput = $originalControlC }
-    if (-not $paperProcess.HasExited) { $stopSucceeded = Stop-PaperSafely }
     $paperProcess.WaitForExit()
     Initialize-GeyserConfig $geyserConfigWasAbsent
     Write-Host "Paper終了コード: $($paperProcess.ExitCode)"
-    if (-not $stopSucceeded) { Stop-WithMessage 'Paperへのstop送信に失敗しました。Process終了は確認しましたが、安全な正常停止は確認できませんでした。' }
     if ($paperProcess.ExitCode -ne 0) { Stop-WithMessage "Paperが異常終了しました。終了コード=$($paperProcess.ExitCode)" }
     Show-Step 'Paperを安全に停止しました。'
     exit 0
 } catch {
     if ($null -ne $paperProcess -and -not $paperProcess.HasExited) {
-        $catchStopSucceeded = Stop-PaperSafely
-        if (-not $catchStopSucceeded) { Write-Host '[ASBP] Launcher例外後のPaper正常停止も確認できませんでした。' -ForegroundColor Red }
+        if (Request-SafeShutdown) {
+            Write-Host '[ASBP] Launcherエラー後、Pluginへ安全停止を要求しました。終了を待っています。' -ForegroundColor Yellow
+            $paperProcess.WaitForExit()
+        } else {
+            Write-Host '[ASBP] Launcherでエラーが発生しましたがPaper Serverは稼働中です。強制終了せず、Process終了まで監視します。' -ForegroundColor Red
+            while (-not $paperProcess.HasExited) { Start-Sleep -Seconds 5; Write-Host '[ASBP] Paper Serverは引き続き稼働中です。' -ForegroundColor Red }
+        }
     }
     Write-Host ''
     Write-Host "[ASBP] エラー: $($_.Exception.Message)" -ForegroundColor Red

@@ -44,10 +44,10 @@ class AdminTestCommandTest {
         assertEquals("testuser", operations.author); assertEquals("hello world", operations.message);
     }
 
-    @Test void statusCarriesOwnedMobCountAndCapacity() {
+    @Test void statusShowsOnlyOwnedMobCountInJapanese() {
         FakeOperations operations = new FakeOperations(); List<Component> messages = new ArrayList<>();
         new AdminTestCommand(operations).onCommand(sender(true, messages), command(), "asbp", new String[]{"test", "mobs", "count"});
-        assertTrue(messages.stream().map(Component::toString).anyMatch(text -> text.contains("78") && text.contains("2")));
+        String rendered=messages.toString(); assertTrue(rendered.contains("ASBP所有Mob") && rendered.contains("78体")); assertFalse(rendered.contains("remaining") || rendered.contains("/ 80"));
     }
 
     private static CommandSender sender(boolean permitted, List<Component> messages) {
@@ -63,7 +63,7 @@ class AdminTestCommandTest {
 
     private static final class FakeOperations implements AdminOperations {
         int gaugeAdded; InterferenceType type; String author; String message;
-        @Override public StatusSnapshot status() { return new StatusSnapshot(true, false, true, 4, 10, 40, false, 78, 2, 3); }
+        @Override public StatusSnapshot status() { return new StatusSnapshot(true, false, true, 4, 10, 40, false, 78, 3); }
         @Override public void addGauge(int count) { gaugeAdded += count; }
         @Override public void applyInterference(InterferenceType type) { this.type = type; }
         @Override public void startRaid() {}

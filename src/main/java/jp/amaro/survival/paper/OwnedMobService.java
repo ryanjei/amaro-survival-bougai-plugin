@@ -7,7 +7,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.function.Predicate;
 
 public final class OwnedMobService {
-    public static final int MAX_OWNED_MOBS = 80;
     private final NamespacedKey markerKey;
     private final NamespacedKey sourceKey;
 
@@ -29,18 +28,6 @@ public final class OwnedMobService {
         int total = 0;
         for (World world : Bukkit.getWorlds()) total += countMarked(world.getEntities(), this::isOwned);
         return total;
-    }
-
-    public int remainingCapacity() {
-        return Math.max(0, MAX_OWNED_MOBS - countOwned());
-    }
-
-    public int allowedSpawnCount(int requested) {
-        return allowedSpawnCount(countOwned(), requested);
-    }
-
-    static int allowedSpawnCount(int owned, int requested) {
-        return Math.min(Math.max(0, requested), Math.max(0, MAX_OWNED_MOBS - owned));
     }
 
     static <T> int countMarked(Iterable<T> values, Predicate<T> marked) {

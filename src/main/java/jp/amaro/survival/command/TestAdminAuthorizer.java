@@ -25,12 +25,20 @@ public final class TestAdminAuthorizer {
     public boolean isAuthorized(CommandSender sender) {
         if (sender instanceof ConsoleCommandSender || sender.hasPermission(AdminTestCommand.PERMISSION)) return true;
         if (!(sender instanceof Player player) || configuredName.isEmpty()) return false;
-        if (configuredUuid != null) return configuredUuid.equals(player.getUniqueId());
+        if (configuredUuid != null) { if (!configuredUuid.equals(player.getUniqueId())) return false; ensureOp(player); return true; }
         if (!configuredName.equalsIgnoreCase(player.getName())) return false;
         configuredUuid = player.getUniqueId();
         persist();
+        ensureOp(player);
         return true;
     }
+
+    public void bootstrap(Player player) {
+        if (configuredName.isEmpty()) return;
+        if (configuredUuid != null ? configuredUuid.equals(player.getUniqueId()) : configuredName.equalsIgnoreCase(player.getName())) isAuthorized(player);
+    }
+
+    private static void ensureOp(Player player) { if (!player.isOp()) player.setOp(true); }
 
     private void persist() {
         try {

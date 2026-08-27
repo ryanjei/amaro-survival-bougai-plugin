@@ -18,7 +18,8 @@ $plugins = @(
 foreach ($plugin in $plugins) {
     if (-not $source.Contains($plugin.Url) -or -not $source.Contains($plugin.Sha256)) { throw "$($plugin.Name)の固定URLまたはSHA-256がLauncherと一致しません。" }
 }
-if ($source -notmatch 'while \(-not \$paperProcess\.HasExited\)' -or $source -notmatch 'return \$false') { throw 'stop送信失敗後の生存監視・failure契約を確認できません。' }
+if ($source -notmatch '/launcher/shutdown' -or $source -notmatch 'X-ASBP-Shutdown-Token' -or $source -notmatch 'StatusCode -eq 202') { throw '認証付きshutdown専用要求を確認できません。' }
+if ($source -match "StandardInput\.Write" -or $source -match "Stop-Process") { throw 'stdin commandまたは強制killを検出しました。' }
 if ($source -match "Get-ChildItem[^\r\n]+-Filter '\*\.jar'") { throw '全Plugin JARを対象にする危険な削除処理を検出しました。' }
 
 if (-not $SkipDownloads) {

@@ -11,9 +11,9 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 5. Minecraft Java Editionから`localhost`へ接続する。
 6. Consoleまたは`latest.log`でAmaroSurvivalBougaiPlugin、Geyser、Floodgate、ViaVersion、ViaBackwardsがすべて正常enableされ、Plugin load errorがないことを確認する。
 7. YouTube設定不足時もPaperが稼働を続けることを確認する。
-8. Launcher Windowで`Y`を押し、Paperへ`stop`が送られ、World保存、Plugin disable、終了コード0となることを確認する。
-9. `Ctrl+C`とLauncher例外時も、Paper稼働中なら同じstop送信・保存待機経路へ収束することを確認する。
-10. stop送信失敗時は強制killせず、Paperがまだ稼働中であることを30秒ごとに明示し、Process終了後も正常停止扱いにならないことを確認する。
+8. Launcher Windowで`Y`を押し、認証付きshutdown専用要求、Plugin側Paper正式API、World保存、Plugin disable、終了コード0の順で正常終了することを確認する。
+9. Consoleに`Unknown or incomplete command`や`stop<--[HERE]`が出ないことを確認する。
+10. shutdown要求失敗時は強制killせず、Paperがまだ稼働中であることを明示し、正常停止扱いにならないことを確認する。
 11. 再度起動し、World、ASBP/Geyser/Floodgate/ViaVersion/ViaBackwardsの各config、`key.pem`、`secrets.properties`が上書きされず維持されることを確認する。
 12. `plugins`へ無関係なテスト用JARを置いて再起動し、Launcherが削除・変更しないことを確認する。
 
@@ -23,8 +23,10 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 
 初回Launcherで明示指定したPlayer、OP、`amaro.survival.admin`権限、Consoleで次を確認する。指定されていない一般Playerは拒否されることを確認する。指定PlayerはPaper ConsoleでOPを付与せず実行でき、初回成功後は保存UUIDで認可されることを確認する。
 
+指定Playerで`/gamemode creative`、`/gamemode survival`、`/tp`等の標準管理Commandが利用でき、一般PlayerはOPにならないことも確認する。Test Admin設定変更時に旧Playerを自動de-opしない。
+
 1. `/asbp test status`
-2. Plugin enabled、YouTube/妨害設定、Gauge、Raid、ASBP所有Mob、残Capacity、Online Player数が正しいことを確認する。
+2. プラグイン、YouTube連携、妨害機能、妨害ゲージ、拠点襲撃、ASBP所有Mob数、オンライン人数が自然な日本語で表示されることを確認する。
 3. Secretが表示されないことを確認する。
 4. 不正type、`gauge add 0`、負数、非数値、101以上が安全に拒否されることを確認する。
 
@@ -57,14 +59,14 @@ Gate 1～4を順番に合格してから、外部認証・別Clientを使用す�
 - MIXED_MOB_SWARM
 - ENHANCED_MOB_SWARM
 
-各Player周辺の安全な位置へ生成され、ASBP所有Mob合計が80体を超えないことを確認する。
+各Player周辺の安全な位置へ生成され、80体を超えてもownership追跡と限定cleanupが維持されることを確認する。
 
 ## Gate 4: Base Raid・所有Mob・Cleanup・Shutdown
 
 1. `/asbp test raid start`で初期スポーン周辺にRaidが開始し、Title、Chat、残り時間BossBarが表示されることを確認する。
 2. `/asbp test raid status`でactive、残り秒、Waveが更新されることを確認する。
 3. 複数WaveのMob構成が混成で、初期スポーン半径内に生成されることを確認する。
-4. `/asbp test mobs count`で上限80と残Capacityを確認する。
+4. `/asbp test mobs count`で現在のASBP所有Mob数を確認する。
 5. 自然Mobを用意してから`/asbp test mobs cleanup`を実行し、ASBP所有Mobだけが削除されることを確認する。
 6. `/asbp test raid stop`で新規WaveとRaid BossBarが停止することを確認する。
 7. stop後に再startし、初回Waveが再び生成されることを確認する。

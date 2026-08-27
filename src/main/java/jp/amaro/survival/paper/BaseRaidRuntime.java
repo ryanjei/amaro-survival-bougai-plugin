@@ -49,8 +49,7 @@ public final class BaseRaidRuntime {
 
     private void spawnWave(World world) {
         Location center = world.getSpawnLocation(); int spawned = 0;
-        int allowed = ownership.allowedSpawnCount(settings.mobsPerWave());
-        for (int i = 0; i < allowed; i++) {
+        for (int i = 0; i < settings.mobsPerWave(); i++) {
             Optional<Location> location = SpawnLocations.around(center, Math.max(8, settings.raidRadius() / 2), settings.raidRadius(), random);
             if (location.isEmpty()) continue;
             Entity entity = world.spawnEntity(location.get(), MOB_TYPES.get(random.nextInt(MOB_TYPES.size())));

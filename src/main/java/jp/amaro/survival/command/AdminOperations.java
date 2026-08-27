@@ -14,6 +14,6 @@ public interface AdminOperations {
 
     record StatusSnapshot(boolean pluginEnabled, boolean youtubeEnabled, boolean interferenceEnabled,
                           int gaugeCurrent, int gaugeRequired, int gaugePercent, boolean raidActive,
-                          int ownedMobs, int remainingCapacity, int onlinePlayers) {}
+                          int ownedMobs, int onlinePlayers) {}
     record RaidSnapshot(boolean active, long remainingSeconds, long currentWave) {}
 }
