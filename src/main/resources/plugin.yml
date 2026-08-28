@@ -6,8 +6,8 @@ description: YouTube Live Chat driven interference for Amaro Survival
 authors: [ryanjei]
 commands:
   asbp:
-    description: Amaro Survival Bougai Plugin administrator test command
-    usage: /asbp test <operation>
+    description: Amaro Survival Bougai Plugin administrator command
+    usage: /asbp <youtube|interference|test> <operation>
     permission: amaro.survival.admin
 permissions:
   amaro.survival.admin:

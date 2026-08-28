@@ -15,7 +15,7 @@
 1. ReleasesまたはローカルBuildで得た `amaro-survival-bougai-plugin-0.1.0-SNAPSHOT.jar` をサーバーの `plugins` フォルダーへ配置します。
 2. サーバーを一度起動し、`plugins/AmaroSurvivalBougaiPlugin/config.yml` を生成します。
 3. YouTube連携を使う場合は、同フォルダーへ `secrets.properties` を作成し、後述の認証情報を設定します。
-4. `config.yml` の `youtube.enabled` を `true` にしてサーバーを再起動します。
+4. 起動時から自動接続する場合は、`config.yml` の `youtube.enabled` を `true` にします。`false`でも、配信開始時に`/asbp youtube on`で接続できます。
 
 日常運用ではサーバーの通常の起動・停止だけで動作し、PowerShellやCLI操作は不要です。
 
@@ -28,7 +28,7 @@ youtube.api-key=YOUR_API_KEY
 youtube.live-chat-id=YOUR_LIVE_CHAT_ID
 ```
 
-`secrets.properties` はGit管理対象外です。環境変数 `AMARO_YOUTUBE_API_KEY` と `AMARO_YOUTUBE_LIVE_CHAT_ID` でも設定できます。認証情報がない、またはAPI接続に失敗した場合はYouTube連携だけが停止し、Minecraftサーバーとプラグイン本体は稼働を続けます。
+`secrets.properties` はGit管理対象外です。環境変数 `AMARO_YOUTUBE_API_KEY` と `AMARO_YOUTUBE_LIVE_CHAT_ID` でも設定できます。認証情報がない、または初期化に失敗した場合はYouTube Runtimeを停止状態に保ち、Minecraftサーバーとプラグイン本体は稼働を続けます。
 
 コメントは `[YT] username: コメント本文` としてゲーム内に表示されます。YouTubeの推奨ポーリング間隔に従い、接続時の既存履歴はゲージへ加算せず、接続後の同じコメントIDはプロセス内で一度だけ処理します。
 
@@ -50,8 +50,8 @@ BASE_RAIDは最初に見つかった通常ワールドの初期スポーン地�
 
 ## config.yml
 
-- `youtube.enabled`: YouTube連携ON/OFF
-- `interference.enabled`: 妨害ON/OFF（コメント表示は継続）
+- `youtube.enabled`: Plugin起動時にYouTube Pollingを自動開始するか
+- `interference.enabled`: Plugin起動時に自動妨害を有効状態にするか
 - `interference.required-comments`: 発動に必要なコメント数（1以上）
 - `interference.category-weights`: SMALL / MEDIUM / LARGEの非負Weight。合計0は禁止
 - `base-raid.duration-seconds`: 襲撃時間
@@ -71,12 +71,18 @@ gradlew.bat clean build
 
 生成Jarは `build/libs/` にあります。GsonはJarへ同梱されます。
 
-## 実機テスト用Admin Command
+## 管理Commandと実機テスト用Command
 
-通常運用では使用不要です。`/asbp`以下はOPまたは`amaro.survival.admin`権限を持つ管理者だけが実行できます。Consoleからも実行できます。認証情報は表示しません。
+`/asbp`以下はOPまたは`amaro.survival.admin`権限を持つ管理者だけが実行できます。Consoleからも実行でき、認証情報は表示しません。YouTubeと自動妨害は独立してON/OFFできます。自動妨害OFF中もYouTubeコメント表示は継続しますが、Gaugeへ加算しません。
 
 | Command | 用途 | 期待結果 |
 | --- | --- | --- |
+| `/asbp youtube on` | YouTube Polling開始 | 再起動なしでPollerを1個だけ開始 |
+| `/asbp youtube off` | YouTube Polling停止 | Minecraft Serverを止めずPollerをclose |
+| `/asbp youtube status` | 実YouTube Runtime確認 | running/stoppedとAuto Startを分離表示 |
+| `/asbp interference on` | 自動妨害を有効化 | 次のコメントからGauge加算を再開 |
+| `/asbp interference off` | 自動妨害だけ停止 | コメント表示と既存Gaugeを維持し、新規加算を停止 |
+| `/asbp interference status` | 実妨害Runtime確認 | enabled/disabledとAuto Startを分離表示 |
 | `/asbp test status` | Plugin、YouTube、妨害、Gauge、Raid、所有Mob、Player状態確認 | 現在値をChatへ表示 |
 | `/asbp test gauge add [count]` | 実コメントと同じGauge処理を1～100件進める | 閾値到達時は本番抽選・妨害を発動 |
 | `/asbp test interference <type>` | 指定妨害を直接確認 | 本番`InterferenceRuntime`から1回発動 |
@@ -87,7 +93,7 @@ gradlew.bat clean build
 | `/asbp test mobs cleanup` | テストMob回収 | PDC所有marker付きMobだけ削除 |
 | `/asbp test youtube fake <author> <message...>` | YouTube Adapter以降を再現 | Chat転送、Gauge加算、抽選、妨害まで本番処理を共有 |
 
-`interference`のtypeにはREADME記載のSMALL/MEDIUM/LARGE各妨害名を指定します。不正なtypeの場合は候補一覧を表示します。Fake CommentはGoogle API通信、API quota、実Comment IDの確認には使用できません。
+`test interference`のtypeにはREADME記載のSMALL/MEDIUM/LARGE各妨害名を指定します。自動妨害RuntimeがOFFでも管理者の手動テストは実行できます。不正なtypeの場合は候補一覧を表示します。Fake Commentは通常コメント入力経路を通るため、自動妨害OFF中は表示のみでGaugeへ加算しません。Google API通信、API quota、実Comment IDの確認には使用できません。
 
 ## v0.1の制限
 

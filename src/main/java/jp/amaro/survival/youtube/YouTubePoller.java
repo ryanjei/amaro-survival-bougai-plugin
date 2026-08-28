@@ -4,7 +4,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
-public final class YouTubePoller implements AutoCloseable {
+public final class YouTubePoller implements YouTubeRuntime.Connection {
     private static final int MAX_SEEN_IDS = 10_000;
     private final YouTubeCommentSource client; private final Consumer<YouTubeComment> sink; private final Logger logger;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "amaro-youtube-poller"); t.setDaemon(true); return t; });

@@ -17,15 +17,18 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
 
     @Override public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (!sender.hasPermission(PERMISSION)) { reply(sender, "このCommandを実行する権限がありません。"); return true; }
-        if (args.length < 2 || !args[0].equalsIgnoreCase("test")) { usage(sender); return true; }
+        if (args.length == 0) { usage(sender); return true; }
         try {
+            if (args[0].equalsIgnoreCase("youtube")) return youtubeRuntime(sender, args);
+            if (args[0].equalsIgnoreCase("interference")) return interferenceRuntime(sender, args);
+            if (args.length < 2 || !args[0].equalsIgnoreCase("test")) { usage(sender); return true; }
             return switch (args[1].toLowerCase(Locale.ROOT)) {
                 case "status" -> status(sender, args);
                 case "gauge" -> gauge(sender, args);
                 case "interference" -> interference(sender, args);
                 case "raid" -> raid(sender, args);
                 case "mobs" -> mobs(sender, args);
-                case "youtube" -> youtube(sender, args);
+                case "youtube" -> fakeYoutube(sender, args);
                 default -> { usage(sender); yield true; }
             };
         } catch (RuntimeException exception) {
@@ -38,7 +41,10 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
         if (args.length != 2) { usage(sender); return true; }
         AdminOperations.StatusSnapshot s = operations.status();
         reply(sender, "Plugin: " + state(s.pluginEnabled()));
-        reply(sender, "YouTube: " + state(s.youtubeEnabled()) + " / 妨害: " + state(s.interferenceEnabled()));
+        reply(sender, "YouTube Runtime: " + running(s.youtubeRunning()));
+        reply(sender, "YouTube Auto Start: " + state(s.youtubeAutoStart()));
+        reply(sender, "Interference Runtime: " + state(s.interferenceRunning()));
+        reply(sender, "Interference Auto Start: " + state(s.interferenceAutoStart()));
         reply(sender, "Gauge: %d / %d (%d%%)".formatted(s.gaugeCurrent(), s.gaugeRequired(), s.gaugePercent()));
         reply(sender, "Base Raid: " + (s.raidActive() ? "active" : "inactive"));
         reply(sender, "Owned Mob: %d / 80 (remaining %d)".formatted(s.ownedMobs(), s.remainingCapacity()));
@@ -78,11 +84,66 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean youtube(CommandSender sender, String[] args) {
+    private boolean fakeYoutube(CommandSender sender, String[] args) {
         if (args.length < 5 || !args[2].equalsIgnoreCase("fake")) { usage(sender); return true; }
         String message = String.join(" ", Arrays.copyOfRange(args, 4, args.length));
         if (args[3].isBlank() || message.isBlank()) { usage(sender); return true; }
         operations.fakeYouTubeComment(args[3], message); reply(sender, "Fake YouTube Commentを投入しました。"); return true;
+    }
+
+    private boolean youtubeRuntime(CommandSender sender, String[] args) {
+        if (args.length != 2) { usage(sender); return true; }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "on" -> {
+                switch (operations.startYouTube()) {
+                    case STARTED -> reply(sender, "YouTube連携を開始しました。");
+                    case ALREADY_RUNNING -> reply(sender, "YouTube連携は既に稼働しています。");
+                    case FAILED -> reply(sender, "YouTube連携を開始できませんでした。secrets.propertiesを確認してください。");
+                    default -> throw new IllegalStateException("YouTube開始結果が不正です。");
+                }
+            }
+            case "off" -> {
+                switch (operations.stopYouTube()) {
+                    case STOPPED -> reply(sender, "YouTube連携を停止しました。");
+                    case ALREADY_STOPPED -> reply(sender, "YouTube連携は既に停止しています。");
+                    default -> throw new IllegalStateException("YouTube停止結果が不正です。");
+                }
+            }
+            case "status" -> {
+                AdminOperations.StatusSnapshot status = operations.status();
+                reply(sender, "YouTube Runtime: " + running(status.youtubeRunning()));
+                reply(sender, "YouTube Auto Start: " + state(status.youtubeAutoStart()));
+            }
+            default -> usage(sender);
+        }
+        return true;
+    }
+
+    private boolean interferenceRuntime(CommandSender sender, String[] args) {
+        if (args.length != 2) { usage(sender); return true; }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "on" -> {
+                switch (operations.enableInterference()) {
+                    case ENABLED -> reply(sender, "自動妨害を有効にしました。");
+                    case ALREADY_ENABLED -> reply(sender, "自動妨害は既に有効です。");
+                    default -> throw new IllegalStateException("自動妨害の開始結果が不正です。");
+                }
+            }
+            case "off" -> {
+                switch (operations.disableInterference()) {
+                    case DISABLED -> reply(sender, "自動妨害を停止しました。");
+                    case ALREADY_DISABLED -> reply(sender, "自動妨害は既に停止しています。");
+                    default -> throw new IllegalStateException("自動妨害の停止結果が不正です。");
+                }
+            }
+            case "status" -> {
+                AdminOperations.StatusSnapshot status = operations.status();
+                reply(sender, "Interference Runtime: " + state(status.interferenceRunning()));
+                reply(sender, "Interference Auto Start: " + state(status.interferenceAutoStart()));
+            }
+            default -> usage(sender);
+        }
+        return true;
     }
 
     static int parseCount(String value) {
@@ -93,14 +154,22 @@ public final class AdminTestCommand implements CommandExecutor, TabCompleter {
     }
 
     private static void interferenceTypes(CommandSender sender) { reply(sender, "type候補: " + String.join(", ", Arrays.stream(InterferenceType.values()).map(Enum::name).toList())); }
-    private static void usage(CommandSender sender) { reply(sender, "使用方法: /asbp test <status|gauge add [count]|interference <type>|raid <start|stop|status>|mobs <count|cleanup>|youtube fake <author> <message...>>"); }
+    private static void usage(CommandSender sender) {
+        reply(sender, "使用方法: /asbp youtube <on|off|status>");
+        reply(sender, "使用方法: /asbp interference <on|off|status>");
+        reply(sender, "テスト: /asbp test <status|gauge add [count]|interference <type>|raid <start|stop|status>|mobs <count|cleanup>|youtube fake <author> <message...>>");
+    }
     private static String state(boolean value) { return value ? "enabled" : "disabled"; }
+    private static String running(boolean value) { return value ? "running" : "stopped"; }
     private static String safeMessage(RuntimeException exception) { return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage(); }
     private static void reply(CommandSender sender, String message) { sender.sendMessage(Component.text("[ASBP] " + message)); }
 
     @Override public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (!sender.hasPermission(PERMISSION)) return List.of();
-        if (args.length == 1) return matches(args[0], List.of("test"));
+        if (args.length == 1) return matches(args[0], List.of("test", "youtube", "interference"));
+        if (args.length == 2 && args[0].equalsIgnoreCase("youtube")) return matches(args[1], List.of("on", "off", "status"));
+        if (args.length == 2 && args[0].equalsIgnoreCase("interference")) return matches(args[1], List.of("on", "off", "status"));
+        if (!args[0].equalsIgnoreCase("test")) return List.of();
         if (args.length == 2) return matches(args[1], List.of("status", "gauge", "interference", "raid", "mobs", "youtube"));
         if (args.length == 3 && args[1].equalsIgnoreCase("interference")) return matches(args[2], Arrays.stream(InterferenceType.values()).map(Enum::name).toList());
         if (args.length == 3 && args[1].equalsIgnoreCase("raid")) return matches(args[2], List.of("start", "stop", "status"));

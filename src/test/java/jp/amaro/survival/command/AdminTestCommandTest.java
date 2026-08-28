@@ -38,6 +38,56 @@ class AdminTestCommandTest {
         assertEquals("testuser", operations.author); assertEquals("hello world", operations.message);
     }
 
+    @Test void controlsYouTubeRuntimeAndReportsRuntimeSeparatelyFromAutoStart() {
+        FakeOperations operations = new FakeOperations(); List<Component> messages = new ArrayList<>();
+        AdminTestCommand handler = new AdminTestCommand(operations);
+
+        handler.onCommand(sender(true, messages), command(), "asbp", new String[]{"youtube", "on"});
+        handler.onCommand(sender(true, messages), command(), "asbp", new String[]{"youtube", "off"});
+        handler.onCommand(sender(true, messages), command(), "asbp", new String[]{"youtube", "status"});
+
+        assertEquals(1, operations.youtubeStarts);
+        assertEquals(1, operations.youtubeStops);
+        assertTrue(messages.stream().map(Component::toString).anyMatch(text -> text.contains("running")));
+        assertTrue(messages.stream().map(Component::toString).anyMatch(text -> text.contains("disabled")));
+    }
+
+    @Test void controlsInterferenceRuntimeWithoutBlockingManualInterference() {
+        FakeOperations operations = new FakeOperations(); List<Component> messages = new ArrayList<>();
+        AdminTestCommand handler = new AdminTestCommand(operations);
+
+        handler.onCommand(sender(true, messages), command(), "asbp", new String[]{"interference", "on"});
+        handler.onCommand(sender(true, messages), command(), "asbp", new String[]{"interference", "off"});
+        handler.onCommand(sender(true, messages), command(), "asbp", new String[]{"test", "interference", "darkness"});
+
+        assertEquals(1, operations.interferenceStarts);
+        assertEquals(1, operations.interferenceStops);
+        assertEquals(InterferenceType.DARKNESS, operations.type);
+    }
+
+    @Test void completesYouTubeRuntimeCommandsWithoutBreakingFakeCommand() {
+        AdminTestCommand handler = new AdminTestCommand(new FakeOperations());
+        assertEquals(List.of("youtube"), handler.onTabComplete(sender(true, new ArrayList<>()), command(), "asbp", new String[]{"you"}));
+        assertEquals(List.of("on", "off", "status"), handler.onTabComplete(sender(true, new ArrayList<>()), command(), "asbp", new String[]{"youtube", ""}));
+        assertEquals(List.of("on", "off", "status"), handler.onTabComplete(sender(true, new ArrayList<>()), command(), "asbp", new String[]{"interference", ""}));
+        assertEquals(List.of("fake"), handler.onTabComplete(sender(true, new ArrayList<>()), command(), "asbp", new String[]{"test", "youtube", ""}));
+    }
+
+    @Test void statusDoesNotConfuseRuntimeWithAutoStartValues() {
+        FakeOperations operations = new FakeOperations();
+        operations.youtubeRunning = false; operations.youtubeAutoStart = true;
+        operations.interferenceRunning = false; operations.interferenceAutoStart = true;
+        List<Component> messages = new ArrayList<>();
+
+        new AdminTestCommand(operations).onCommand(sender(true, messages), command(), "asbp", new String[]{"test", "status"});
+
+        List<String> text = messages.stream().map(Component::toString).toList();
+        assertTrue(text.stream().anyMatch(value -> value.contains("YouTube Runtime") && value.contains("stopped")));
+        assertTrue(text.stream().anyMatch(value -> value.contains("YouTube Auto Start") && value.contains("enabled")));
+        assertTrue(text.stream().anyMatch(value -> value.contains("Interference Runtime") && value.contains("disabled")));
+        assertTrue(text.stream().anyMatch(value -> value.contains("Interference Auto Start") && value.contains("enabled")));
+    }
+
     @Test void statusCarriesOwnedMobCountAndCapacity() {
         FakeOperations operations = new FakeOperations(); List<Component> messages = new ArrayList<>();
         new AdminTestCommand(operations).onCommand(sender(true, messages), command(), "asbp", new String[]{"test", "mobs", "count"});
@@ -56,8 +106,16 @@ class AdminTestCommandTest {
     private static Command command() { return new Command("asbp") { @Override public boolean execute(CommandSender sender, String label, String[] args) { return false; } }; }
 
     private static final class FakeOperations implements AdminOperations {
-        int gaugeAdded; InterferenceType type; String author; String message;
-        @Override public StatusSnapshot status() { return new StatusSnapshot(true, false, true, 4, 10, 40, false, 78, 2, 3); }
+        int gaugeAdded; int youtubeStarts; int youtubeStops; int interferenceStarts; int interferenceStops;
+        InterferenceType type; String author; String message;
+        boolean youtubeRunning = true; boolean youtubeAutoStart;
+        boolean interferenceRunning = true; boolean interferenceAutoStart;
+        @Override public StatusSnapshot status() { return new StatusSnapshot(true, youtubeRunning, youtubeAutoStart,
+                interferenceRunning, interferenceAutoStart, 4, 10, 40, false, 78, 2, 3); }
+        @Override public YouTubeRuntimeResult startYouTube() { youtubeStarts++; return YouTubeRuntimeResult.STARTED; }
+        @Override public YouTubeRuntimeResult stopYouTube() { youtubeStops++; return YouTubeRuntimeResult.STOPPED; }
+        @Override public InterferenceRuntimeResult enableInterference() { interferenceStarts++; return InterferenceRuntimeResult.ENABLED; }
+        @Override public InterferenceRuntimeResult disableInterference() { interferenceStops++; return InterferenceRuntimeResult.DISABLED; }
         @Override public void addGauge(int count) { gaugeAdded += count; }
         @Override public void applyInterference(InterferenceType type) { this.type = type; }
         @Override public void startRaid() {}
