@@ -71,6 +71,32 @@ gradlew.bat clean build
 
 生成Jarは `build/libs/` にあります。GsonはJarへ同梱されます。
 
+## ローカル実機確認
+
+`START_SERVER.cmd` は、準備済みのローカルPaperサーバーを起動するだけのLauncherです。PluginのBuild・配置・設定変更・YouTube制御は行いません。停止時はPaper Consoleで `stop` と入力してください。
+
+初回準備と確認は、次の順で行います。
+
+1. コマンドプロンプトで `java -version` を確認し、Java 25が選択されるようにします。LauncherもJavaのMajor Versionを検証し、25以外では起動しません。
+2. Repository直下で `gradlew.bat clean build` を実行します。
+3. 生成された `build/libs/amaro-survival-bougai-plugin-0.1.0-SNAPSHOT.jar` を `.runtime/paper/plugins/` に配置します。
+4. Paper 26.2 build 112の公式Jarを `.runtime/paper/paper.jar` として配置します。Paper Jar、World、Log、Server設定、外部Plugin、EULA、Player情報は `.runtime/` 配下のローカルデータであり、GitへCommitしません。
+5. 初回起動前にMinecraft EULAを確認し、同意する場合だけ `.runtime/paper/eula.txt` をユーザー自身で設定します。LauncherはEULAへ自動同意しません。
+6. `START_SERVER.cmd` をダブルクリックします。ServerのWorking Directoryは `.runtime/paper`、JVM設定は `-Xms2G -Xmx4G`、起動引数は `nogui` です。エラー終了時はWindowが閉じず、原因を確認できます。
+7. Minecraft Java Editionから `localhost:25565` へ接続します。
+8. Paper Consoleで `op <Minecraft名>` を実行し、実機確認担当者へOP権限を付与します。
+9. Paper Consoleまたは `plugins` Commandで `AmaroSurvivalBougaiPlugin` が有効になっていることを確認します。
+10. `/asbp test status` でPlugin、YouTube、妨害、Gauge、Raid、所有Mob、Online Playerを確認します。
+11. `/asbp test youtube fake testuser hello` でYouTube Adapter以降のChat表示とGauge加算を確認します。妨害RuntimeがOFFなら先に `/asbp interference on` を実行します。
+12. `/asbp test gauge add 1` と `/asbp test gauge add 9` でGauge進行と閾値到達時の抽選・リセットを確認します。
+13. SMALL各種を `/asbp test interference DARKNESS` 等で直接確認します。
+14. MEDIUM各種を `/asbp test interference ZOMBIE_SWARM` 等で直接確認し、`/asbp test mobs count` で上限80を確認します。終了後は必要に応じて `/asbp test mobs cleanup` を使用します。
+15. `/asbp test raid start` でBASE_RAIDを開始し、残り時間・Wave・初期Spawn周辺での生成を確認します。`/asbp test raid status`、`/asbp test raid stop`、再度 `start` の順で再実行も確認します。
+16. `secrets.properties` をServer側Plugin Directoryへ設定後、`/asbp youtube on` で実YouTube接続を開始し、`status`、実Comment、`off`、再度 `on` を確認します。秘密情報はGitへCommitしません。
+17. Geyser/Floodgateを利用する場合は、それぞれの公式手順で `.runtime/paper/plugins/` へ導入し、Bedrock側からLocal/LAN接続、Chat表示、SMALL/MEDIUM妨害、BASE_RAID中の動作を確認します。本PluginはGeyser/Floodgate Jarの取得や設定変更を行いません。
+
+Fresh Cloneでは `.runtime/` が存在しないため、上記のPaper Jar・Plugin Jar・EULA・必要なServer設定を準備してからLauncherを実行してください。実Worldや既存Server設定をRepositoryへコピーしないでください。
+
 ## 管理Commandと実機テスト用Command
 
 `/asbp`以下はOPまたは`amaro.survival.admin`権限を持つ管理者だけが実行できます。Consoleからも実行でき、認証情報は表示しません。YouTubeと自動妨害は独立してON/OFFできます。自動妨害OFF中もYouTubeコメント表示は継続しますが、Gaugeへ加算しません。
